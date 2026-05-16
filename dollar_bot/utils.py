@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 
 def now_iso(tz_name: str = "Asia/Tehran") -> str:
-    return datetime.now(ZoneInfo(tz_name)).isoformat(timespec="seconds")
+    try:
+        tz = ZoneInfo(tz_name)
+    except Exception:
+        tz = timezone(timedelta(hours=3, minutes=30))
+    return datetime.now(tz).isoformat(timespec="seconds")
 
 
 def normalize_price_to_toman(raw: object) -> int | None:
