@@ -1,0 +1,27 @@
+app:
+  timezone: "Asia/Tehran"
+  request_timeout_seconds: 25
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+  sleep_between_sources_seconds: 2
+  sqlite_path: "data/dollar_prices.db"
+  export_dir: "output"
+
+schedule:
+  enabled: false
+  interval_minutes: 15
+
+sync:
+  enabled: false
+  afrakala_api_base_url: "${AFRAKALA_API_BASE_URL}"
+  afrakala_bot_api_key: "${AFRAKALA_BOT_API_KEY}"
+  dynamic_table_slug: "${AFRAKALA_TABLE_SLUG}"
+  dynamic_table_id: ""
+
+sources:
+  - source_code: "navasan_usd_cash_tehran"
+    source_name: "نوسان - دلار آمریکا نقدی تهران"
+    source_url: "https://www.navasan.net/"
+    enabled: true
+    method: "html_selector"
+    price_kind: "average"
+    selector: "#latest > div.rows > div.row:nth-child(1) > div.val"
