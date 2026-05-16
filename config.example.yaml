@@ -1,0 +1,45 @@
+app:
+  timezone: "Asia/Tehran"
+  request_timeout_seconds: 20
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+  sleep_between_sources_seconds: 3
+  sqlite_path: "data/dollar_prices.db"
+  export_dir: "output"
+
+schedule:
+  enabled: false
+  interval_minutes: 15
+
+sync:
+  enabled: false
+  afrakala_api_base_url: "${AFRAKALA_API_BASE_URL}"
+  afrakala_bot_api_key: "${AFRAKALA_BOT_API_KEY}"
+  dynamic_table_slug: "${AFRAKALA_TABLE_SLUG}"
+  # اگر table_id را داری، اینجا بگذار تا دیگر با slug نگردد.
+  dynamic_table_id: ""
+
+sources:
+  # این‌ها نمونه‌اند. URL و selector/regex را باید طبق منبع واقعی خودت تنظیم کنی.
+  - source_code: "source_1"
+    source_name: "منبع نمونه ۱"
+    source_url: "https://example.com"
+    enabled: false
+    method: "html_regex"
+    price_kind: "sell"
+    regex: "([0-9]{2,3}(?:[,\\s][0-9]{3})+)"
+
+  - source_code: "source_2"
+    source_name: "منبع نمونه ۲"
+    source_url: "https://example.com/api"
+    enabled: false
+    method: "json_path"
+    price_kind: "average"
+    json_path: "data.usd_tehran.price"
+
+  - source_code: "manual_test"
+    source_name: "تست دستی"
+    source_url: "manual://test"
+    enabled: true
+    method: "manual"
+    price_kind: "average"
+    manual_price_toman: 68500
