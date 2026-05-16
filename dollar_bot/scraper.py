@@ -36,6 +36,20 @@ class DollarScraper:
         self.storage.log('info', 'پایان اجرای ربات قیمت دلار تهران', job_id=job_id, details={'count': len(results)})
         return results
 
+    def _apply_unit(self, source: dict[str, Any], price: int | None) -> int | None:
+        if price is None:
+            return None
+        unit = str(source.get('unit', 'toman')).lower().strip()
+        if unit in ('rial', 'ریال'):
+            return round(price / 10)
+        multiplier = source.get('multiplier')
+        if multiplier is not None:
+            try:
+                return round(price * float(multiplier))
+            except Exception:
+                return price
+        return price
+
     def collect_source(self, source: dict[str, Any], job_id: str | None = None) -> dict[str, Any]:
         collected_at = now_iso(self.tz)
         source_code = source.get('source_code', 'unknown')
@@ -47,6 +61,7 @@ class DollarScraper:
             if method == 'manual':
                 raw_text = str(source.get('manual_price_toman', ''))
                 price = normalize_price_to_toman(raw_text)
+                price = self._apply_unit(source, price)
                 return self._success_row(source, raw_text, price, collected_at, raw_response={'method': 'manual'})
 
             headers = {'User-Agent': self.user_agent, 'Accept': 'text/html,application/json'}
@@ -58,6 +73,7 @@ class DollarScraper:
                 raw_value = get_by_json_path(data, source.get('json_path', ''))
                 raw_text = str(raw_value) if raw_value is not None else ''
                 price = normalize_price_to_toman(raw_text)
+                price = self._apply_unit(source, price)
                 return self._success_row(source, raw_text, price, collected_at, raw_response=data)
 
             text = response.text
@@ -79,6 +95,7 @@ class DollarScraper:
                 raise ValueError(f'Unsupported method: {method}')
 
             price = normalize_price_to_toman(raw_text)
+            price = self._apply_unit(source, price)
             if price is None:
                 raise ValueError('price_not_found_or_not_parseable')
 
