@@ -2,7 +2,7 @@ app:
   timezone: "Asia/Tehran"
   request_timeout_seconds: 20
   user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-  sleep_between_sources_seconds: 3
+  sleep_between_sources_seconds: 4
   sqlite_path: "data/dollar_prices.db"
   export_dir: "output"
 
@@ -19,23 +19,50 @@ sync:
   dynamic_table_id: ""
 
 sources:
-  # این‌ها نمونه‌اند. URL و selector/regex را باید طبق منبع واقعی خودت تنظیم کنی.
-  - source_code: "source_1"
-    source_name: "منبع نمونه ۱"
-    source_url: "https://example.com"
+  # فاز اول: ۵ منبع قابل ویرایش. selector/regex هر سایت باید بعد از تست صفحه واقعی تنظیم شود.
+  # تا وقتی selector قطعی نشده، enabled را false نگه دار تا عدد اشتباه ثبت نشود.
+
+  - source_code: "tgju"
+    source_name: "TGJU - دلار آزاد"
+    source_url: "https://www.tgju.org/"
     enabled: false
     method: "html_regex"
-    price_kind: "sell"
-    regex: "([0-9]{2,3}(?:[,\\s][0-9]{3})+)"
-
-  - source_code: "source_2"
-    source_name: "منبع نمونه ۲"
-    source_url: "https://example.com/api"
-    enabled: false
-    method: "json_path"
     price_kind: "average"
-    json_path: "data.usd_tehran.price"
+    regex: "دلار[^0-9۰-۹]*([0-9۰-۹]{2,3}(?:[,\\s][0-9۰-۹]{3})+)"
 
+  - source_code: "eghtesadonline"
+    source_name: "اقتصاد آنلاین - قیمت ارز"
+    source_url: "https://www.eghtesadonline.com/"
+    enabled: false
+    method: "html_regex"
+    price_kind: "average"
+    regex: "دلار[^0-9۰-۹]*([0-9۰-۹]{2,3}(?:[,\\s][0-9۰-۹]{3})+)"
+
+  - source_code: "tejaratnews"
+    source_name: "تجارت نیوز - قیمت دلار"
+    source_url: "https://tejaratnews.com/"
+    enabled: false
+    method: "html_regex"
+    price_kind: "average"
+    regex: "دلار[^0-9۰-۹]*([0-9۰-۹]{2,3}(?:[,\\s][0-9۰-۹]{3})+)"
+
+  - source_code: "donya_e_eqtesad"
+    source_name: "دنیای اقتصاد - قیمت دلار"
+    source_url: "https://donya-e-eqtesad.com/"
+    enabled: false
+    method: "html_regex"
+    price_kind: "average"
+    regex: "دلار[^0-9۰-۹]*([0-9۰-۹]{2,3}(?:[,\\s][0-9۰-۹]{3})+)"
+
+  - source_code: "bonbast"
+    source_name: "Bonbast - USD"
+    source_url: "https://bonbast.com/"
+    enabled: false
+    method: "html_regex"
+    price_kind: "average"
+    regex: "USD[^0-9]*([0-9]{2,3}(?:[,\\s][0-9]{3})+)"
+
+  # منبع تستی برای اینکه مطمئن شویم برنامه بدون وابستگی به سایت‌ها درست اجرا می‌شود.
   - source_code: "manual_test"
     source_name: "تست دستی"
     source_url: "manual://test"
