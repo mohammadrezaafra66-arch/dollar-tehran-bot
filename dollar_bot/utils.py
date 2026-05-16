@@ -37,9 +37,12 @@ def normalize_price_to_toman(raw: object) -> int | None:
     if not text:
         return None
 
-    # Handles phrases like: 140 هزار و 308 تومان => 140,308 toman
+    # Examples:
+    # 81 هزار => 81000 toman
+    # 140 هزار و 308 تومان => 140308 toman
+    # 1,403,080 ریال => 140308 toman
     thousand_match = re.search(r"(\d{2,4})\s*هزار(?:\s*و\s*(\d{1,3}))?", text)
-    if thousand_match and "تومان" in text:
+    if thousand_match:
         major = int(thousand_match.group(1))
         minor = int(thousand_match.group(2) or 0)
         return major * 1000 + minor
