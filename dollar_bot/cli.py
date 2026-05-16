@@ -11,6 +11,35 @@ from .scraper import DollarScraper
 from .storage import Storage
 
 
+def _fmt_price(value):
+    if value is None:
+        return '-'
+    try:
+        return f'{int(value):,}'
+    except Exception:
+        return str(value)
+
+
+def _print_rows(rows: list[dict]) -> None:
+    print('')
+    print('Source results:')
+    print('-' * 80)
+    for row in rows:
+        name = row.get('source_name') or row.get('source_code') or '-'
+        code = row.get('source_code') or '-'
+        status = row.get('status') or '-'
+        price = _fmt_price(row.get('average_price_toman'))
+        error = row.get('error_message') or ''
+        raw = row.get('raw_price_text') or ''
+        print(f'{code} | {name} | {status} | price={price}')
+        if raw:
+            print(f'  raw: {raw[:160]}')
+        if error:
+            print(f'  error: {error[:300]}')
+    print('-' * 80)
+    print('')
+
+
 def run_once(config_path: str | None = None, sync: bool = True, export: bool = False) -> None:
     config = load_config(config_path)
     storage = Storage(config['app']['sqlite_path'])
@@ -21,6 +50,7 @@ def run_once(config_path: str | None = None, sync: bool = True, export: bool = F
     fail = len(rows) - ok
     print(f'Job: {job_id}')
     print(f'Collected: {len(rows)} | success={ok} | failed={fail}')
+    _print_rows(rows)
 
     if sync:
         try:
