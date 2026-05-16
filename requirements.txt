@@ -1,0 +1,10 @@
+requests==2.32.3
+beautifulsoup4==4.12.3
+PyYAML==6.0.2
+python-dotenv==1.0.1
+pandas==2.2.3
+openpyxl==3.1.5
+fastapi==0.115.6
+uvicorn==0.32.1
+APScheduler==3.10.4
+jdatetime==5.0.0
