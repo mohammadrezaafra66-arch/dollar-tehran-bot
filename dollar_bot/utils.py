@@ -13,28 +13,44 @@ def now_iso(tz_name: str = "Asia/Tehran") -> str:
     return datetime.now(tz).isoformat(timespec="seconds")
 
 
-def normalize_price_to_toman(raw: object) -> int | None:
-    if raw is None:
-        return None
-    text = str(raw).strip()
-    if not text:
-        return None
-
+def _to_english_digits(text: str) -> str:
     fa_digits = "۰۱۲۳۴۵۶۷۸۹"
     ar_digits = "٠١٢٣٤٥٦٧٨٩"
     for i, ch in enumerate(fa_digits):
         text = text.replace(ch, str(i))
     for i, ch in enumerate(ar_digits):
         text = text.replace(ch, str(i))
+    return text
+
+
+def _clean_number(value: str) -> int | None:
+    num_text = re.sub(r"[^0-9]", "", value or "")
+    if not num_text:
+        return None
+    return int(num_text)
+
+
+def normalize_price_to_toman(raw: object) -> int | None:
+    if raw is None:
+        return None
+    text = _to_english_digits(str(raw).strip())
+    if not text:
+        return None
+
+    # Handles phrases like: 140 هزار و 308 تومان => 140,308 toman
+    thousand_match = re.search(r"(\d{2,4})\s*هزار(?:\s*و\s*(\d{1,3}))?", text)
+    if thousand_match and "تومان" in text:
+        major = int(thousand_match.group(1))
+        minor = int(thousand_match.group(2) or 0)
+        return major * 1000 + minor
 
     numbers = re.findall(r"\d+(?:[,.\s]\d+)*", text)
     if not numbers:
         return None
 
-    num_text = re.sub(r"[^0-9]", "", numbers[0])
-    if not num_text:
+    value = _clean_number(numbers[0])
+    if value is None:
         return None
-    value = int(num_text)
 
     if "ریال" in text or "rial" in text.lower():
         value = round(value / 10)
