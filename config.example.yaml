@@ -35,3 +35,12 @@ sources:
     price_kind: "average"
     unit: "rial"
     regex: "نرخ فعلی[:：\\s]*([0-9۰-۹]{1,3}(?:[,،][0-9۰-۹]{3})+)"
+
+  - source_code: "tgju_eur"
+    source_name: "TGJU - یورو"
+    source_url: "https://www.tgju.org/profile/price_eur"
+    enabled: true
+    method: "html_regex"
+    price_kind: "average"
+    unit: "rial"
+    regex: "نرخ فعلی[:：\\s]*([0-9۰-۹]{1,3}(?:[,،][0-9۰-۹]{3})+)"
