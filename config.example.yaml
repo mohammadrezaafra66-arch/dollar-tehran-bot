@@ -18,53 +18,11 @@ sync:
   dynamic_table_id: ""
 
 sources:
-  # فعلاً فقط منبعی که در تست شما عدد درست داده فعال است.
-  # منابع دیگر عدد پیدا می‌کردند، اما عدد درست دلار تهران نبود؛ بنابراین غیرفعال شدند.
-
-  - source_code: "tejaratnews"
-    source_name: "تجارت نیوز - قیمت دلار"
-    source_url: "https://tejaratnews.com/"
+  # فقط TGJU فعال است. منابع دیگر عمداً حذف شدند تا خروجی ربات تمیز و قابل‌ردیابی بماند.
+  - source_code: "tgju"
+    source_name: "TGJU - دلار آزاد"
+    source_url: "https://www.tgju.org/"
     enabled: true
     method: "html_regex"
     price_kind: "average"
     regex: "دلار[^0-9۰-۹]{0,120}([0-9۰-۹]{2,4}\\s*هزار(?:\\s*و\\s*[0-9۰-۹]{1,3})?|[0-9۰-۹]{2,3}(?:[,،\\s][0-9۰-۹]{3})+)"
-
-  - source_code: "eghtesadonline"
-    source_name: "اقتصاد آنلاین - قیمت ارز"
-    source_url: "https://www.eghtesadonline.com/"
-    enabled: false
-    method: "html_regex"
-    price_kind: "average"
-    regex: "دلار[^0-9۰-۹]{0,80}([0-9۰-۹]{2,4}\\s*هزار(?:\\s*و\\s*[0-9۰-۹]{1,3})?|[0-9۰-۹]{2,3}(?:[,،\\s][0-9۰-۹]{3})+)"
-
-  - source_code: "tgju"
-    source_name: "TGJU - دلار آزاد"
-    source_url: "https://www.tgju.org/"
-    enabled: false
-    method: "html_regex"
-    price_kind: "average"
-    regex: "دلار[^0-9۰-۹]{0,120}([0-9۰-۹]{2,4}\\s*هزار(?:\\s*و\\s*[0-9۰-۹]{1,3})?|[0-9۰-۹]{2,3}(?:[,،\\s][0-9۰-۹]{3})+)"
-
-  - source_code: "donya_e_eqtesad"
-    source_name: "دنیای اقتصاد - قیمت دلار"
-    source_url: "https://donya-e-eqtesad.com/"
-    enabled: false
-    method: "html_regex"
-    price_kind: "average"
-    regex: "دلار[^0-9۰-۹]{0,120}([0-9۰-۹]{2,4}\\s*هزار(?:\\s*و\\s*[0-9۰-۹]{1,3})?|[0-9۰-۹]{2,3}(?:[,،\\s][0-9۰-۹]{3})+)"
-
-  - source_code: "navasan_usd_cash_tehran"
-    source_name: "نوسان - دلار آمریکا نقدی تهران"
-    source_url: "https://www.navasan.tech/"
-    enabled: false
-    method: "html_regex"
-    price_kind: "average"
-    regex: "دلار[^0-9۰-۹]{0,160}([0-9۰-۹]{2,4}\\s*هزار(?:\\s*و\\s*[0-9۰-۹]{1,3})?|[0-9۰-۹]{2,3}(?:[,،\\s][0-9۰-۹]{3})+)"
-
-  - source_code: "manual_test"
-    source_name: "تست دستی"
-    source_url: "manual://test"
-    enabled: false
-    method: "manual"
-    price_kind: "average"
-    manual_price_toman: 68500
