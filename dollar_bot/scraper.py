@@ -50,6 +50,22 @@ class DollarScraper:
                 return price
         return price
 
+    def _visible_text(self, html: str) -> str:
+        soup = BeautifulSoup(html, 'html.parser')
+        for tag in soup(['script', 'style', 'noscript']):
+            tag.decompose()
+        return soup.get_text(' ', strip=True)
+
+    def _regex_extract(self, regex: str, raw_html: str) -> str:
+        match = re.search(regex, raw_html, flags=re.I | re.S)
+        if match:
+            return match.group(1) if match.groups() else match.group(0)
+        visible = self._visible_text(raw_html)
+        match = re.search(regex, visible, flags=re.I | re.S)
+        if match:
+            return match.group(1) if match.groups() else match.group(0)
+        return ''
+
     def collect_source(self, source: dict[str, Any], job_id: str | None = None) -> dict[str, Any]:
         collected_at = now_iso(self.tz)
         source_code = source.get('source_code', 'unknown')
@@ -89,8 +105,7 @@ class DollarScraper:
                 regex = source.get('regex')
                 if not regex:
                     raise ValueError('regex is required for html_regex method')
-                match = re.search(regex, text, flags=re.I | re.S)
-                raw_text = match.group(1) if match else ''
+                raw_text = self._regex_extract(regex, text)
             else:
                 raise ValueError(f'Unsupported method: {method}')
 
