@@ -2,13 +2,16 @@ app:
   timezone: "Asia/Tehran"
   request_timeout_seconds: 20
   user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-  sleep_between_sources_seconds: 4
+  sleep_between_sources_seconds: 5
+  min_cache_seconds: 60
+  max_consecutive_failures: 3
+  cooldown_seconds: 300
   sqlite_path: "data/dollar_prices.db"
   export_dir: "output"
 
 schedule:
   enabled: false
-  interval_minutes: 15
+  interval_minutes: 3
 
 sync:
   enabled: false
