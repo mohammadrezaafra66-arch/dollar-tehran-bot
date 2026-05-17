@@ -20,11 +20,12 @@ sync:
 sources:
   # فقط TGJU فعال است.
   # این صفحه قیمت دلار را به ریال نمایش می‌دهد؛ ربات با unit: rial آن را به تومان تبدیل می‌کند.
+  # به جای selector طولانی، از متن «نرخ فعلی» استفاده می‌کنیم تا اگر جای جدول کمی عوض شد، ربات کمتر خراب شود.
   - source_code: "tgju"
     source_name: "TGJU - دلار تهران"
     source_url: "https://www.tgju.org/profile/price_dollar_rl"
     enabled: true
-    method: "html_selector"
+    method: "html_regex"
     price_kind: "average"
     unit: "rial"
-    selector: "#main > div.stocks-profile > div.fs-row.bootstrap-fix.widgets.full-w-set.profile-social-share-box > div.row.tgju-widgets-row > div.tgju-widgets-block.col-md-12.col-lg-4.tgju-widgets-block-bottom-unset.overview-first-block > div > div:nth-child(2) > div > div.tables-default.normal > table > tbody > tr:nth-child(1) > td.text-left"
+    regex: "نرخ فعلی[:：\\s]*([0-9۰-۹]{1,3}(?:[,،][0-9۰-۹]{3})+)"
