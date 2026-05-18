@@ -24,8 +24,9 @@
           "unit": "rial",
           "extractors": [
             {"kind": "css", "selector": "#main > div.stocks-profile > div.fs-row.bootstrap-fix.widgets.full-w-set.profile-social-share-box > div.row.tgju-widgets-row > div.tgju-widgets-block.col-md-12.col-lg-4.tgju-widgets-block-bottom-unset.overview-first-block > div > div:nth-child(2) > div > div.tables-default.normal > table > tbody > tr:nth-child(1) > td.text-left"},
+            {"kind": "css", "selector": "td.text-left"},
             {"kind": "regex", "pattern": "نرخ فعلی[:：\\s]*([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"},
-            {"kind": "regex", "pattern": "<td[^>]*class=\\\"text-left\\\"[^>]*>([0-9,۰-۹٠-٩]+)</td>"}
+            {"kind": "regex", "pattern": "<td[^>]*class=\\\"text-left\\\"[^>]*>\\s*([0-9,۰-۹٠-٩]+)\\s*</td>"}
           ]
         },
         {
@@ -71,7 +72,10 @@
           "enabled": true,
           "price_kind": "current",
           "unit": "toman",
-          "extractors": [{"kind": "css", "selector": "#usd1"}]
+          "extractors": [
+            {"kind": "css", "selector": "#usd1"},
+            {"kind": "regex", "pattern": "<td[^>]*id=\\\"usd1\\\"[^>]*>\\s*([0-9,۰-۹٠-٩]+)\\s*</td>"}
+          ]
         },
         {
           "code": "bonbast_usd_tehran_buy",
@@ -80,7 +84,10 @@
           "enabled": true,
           "price_kind": "buy",
           "unit": "toman",
-          "extractors": [{"kind": "css", "selector": "#usd2"}]
+          "extractors": [
+            {"kind": "css", "selector": "#usd2"},
+            {"kind": "regex", "pattern": "<td[^>]*id=\\\"usd2\\\"[^>]*>\\s*([0-9,۰-۹٠-٩]+)\\s*</td>"}
+          ]
         },
         {
           "code": "tabdeal_usd_tehran_current",
@@ -108,7 +115,12 @@
           "enabled": true,
           "price_kind": "current",
           "unit": "rial",
-          "extractors": [{"kind": "regex", "pattern": "نرخ فعلی[:：\\s]*([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"}]
+          "extractors": [
+            {"kind": "css", "selector": "#main > div.stocks-profile > div.fs-row.bootstrap-fix.widgets.full-w-set.profile-social-share-box > div.row.tgju-widgets-row > div.tgju-widgets-block.col-md-12.col-lg-4.tgju-widgets-block-bottom-unset.overview-first-block > div > div:nth-child(2) > div > div.tables-default.normal > table > tbody > tr:nth-child(1) > td.text-left"},
+            {"kind": "css", "selector": "td.text-left"},
+            {"kind": "regex", "pattern": "نرخ فعلی[:：\\s]*([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"},
+            {"kind": "regex", "pattern": "<td[^>]*class=\\\"text-left\\\"[^>]*>\\s*([0-9,۰-۹٠-٩]+)\\s*</td>"}
+          ]
         }
       ]
     },
@@ -124,7 +136,12 @@
           "enabled": true,
           "price_kind": "current",
           "unit": "rial",
-          "extractors": [{"kind": "regex", "pattern": "نرخ فعلی[:：\\s]*([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"}]
+          "extractors": [
+            {"kind": "css", "selector": "#main > div.stocks-profile > div.fs-row.bootstrap-fix.widgets.full-w-set.profile-social-share-box > div.row.tgju-widgets-row > div.tgju-widgets-block.col-md-12.col-lg-4.tgju-widgets-block-bottom-unset.overview-first-block > div > div:nth-child(2) > div > div.tables-default.normal > table > tbody > tr:nth-child(1) > td.text-left"},
+            {"kind": "css", "selector": "td.text-left"},
+            {"kind": "regex", "pattern": "نرخ فعلی[:：\\s]*([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"},
+            {"kind": "regex", "pattern": "<td[^>]*class=\\\"text-left\\\"[^>]*>\\s*([0-9,۰-۹٠-٩]+)\\s*</td>"}
+          ]
         }
       ]
     }
