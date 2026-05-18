@@ -1,47 +1,21 @@
-# Dollar Tehran Price Bot
+# Afra Market Data Bot
 
-ربات مستقل قیمت دلار تهران برای اجرای روی کامپیوتر ویندوز.
+ربات ماژولار استخراج شاخص‌های بازار برای انتقال به داشبورد و API دستیار هوشمند افرا کالا.
 
-این پروژه به دستیار افراکالا وابسته نیست. فقط اگر sync را فعال کنید، خروجی قیمت‌های جمع‌آوری‌شده را به جدول پویا در دستیار افراکالا می‌فرستد.
+این نسخه جایگزین ساختار قبلی `dollar_bot` شده و برای رشد تا ۵۰+ شاخص طراحی شده است. اضافه‌کردن سایت یا شاخص جدید باید از طریق کانفیگ انجام شود، نه با ساخت اسکریپرهای پراکنده.
 
-## خروجی اصلی
+## اجرای سریع در ویندوز
 
-هر بار اجرا، این اطلاعات ذخیره می‌شود:
-
-- source_name
-- source_code
-- buy_price_toman
-- sell_price_toman
-- average_price_toman
-- raw_price_text
-- source_url
-- status
-- error_message
-- collected_at
-
-داده‌ها در SQLite ذخیره می‌شوند:
-
-```text
-data/dollar_prices.db
-```
-
-## نصب سریع روی ویندوز
-
-داخل پوشه پروژه:
-
-```bat
-copy config.example.yaml config.yaml
-copy .env.example .env
-py -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-python main.py run-once
-```
-
-یا ساده‌تر:
+برای اجرای یک‌باره:
 
 ```bat
 run_once.bat
+```
+
+برای اجرای دائمی هر ۳ دقیقه:
+
+```bat
+run_loop.bat
 ```
 
 برای داشبورد:
@@ -50,118 +24,112 @@ run_once.bat
 start_dashboard.bat
 ```
 
-بعد برو به:
+آدرس داشبورد:
 
 ```text
 http://127.0.0.1:8090
 ```
 
-## تنظیم منابع
+برای اجرای همزمان داشبورد و ربات:
 
-فایل `config.yaml` را باز کن. هر منبع داخل بخش `sources` تعریف می‌شود.
-
-### حالت ۱: HTML + Regex
-
-```yaml
-- source_code: "source_1"
-  source_name: "منبع نمونه"
-  source_url: "https://example.com"
-  enabled: true
-  method: "html_regex"
-  price_kind: "sell"
-  regex: "([0-9]{2,3}(?:[,\\s][0-9]{3})+)"
+```bat
+start_all.bat
 ```
 
-### حالت ۲: HTML + CSS Selector
+## ساختار پروژه
 
-```yaml
-- source_code: "source_2"
-  source_name: "منبع selector"
-  source_url: "https://example.com"
-  enabled: true
-  method: "html_selector"
-  price_kind: "average"
-  selector: ".usd-price"
+```text
+afra_market_data/
+  core.py          موتور استخراج، نرمال‌سازی، ذخیره‌سازی، تاریخ شمسی، ارسال API
+  cli.py           دستورهای run-once / run-loop / post
+  dashboard.py     داشبورد FastAPI با دکمه اجرای فوری
+configs/
+  indicators.json  تعریف شاخص‌ها و سایت‌ها
+main.py            نقطه ورود CLI
+dashboard.py       نقطه ورود داشبورد
 ```
 
-### حالت ۳: JSON API
+## شاخص‌ها و منابع فعلی
 
-```yaml
-- source_code: "source_api"
-  source_name: "منبع API"
-  source_url: "https://example.com/api/rates"
-  enabled: true
-  method: "json_path"
-  price_kind: "average"
-  json_path: "data.usd_tehran.price"
+در فایل `configs/indicators.json` این موارد منتقل شده‌اند:
+
+- TGJU - دلار تهران
+- TGJU - درهم امارات
+- TGJU - یورو
+- signal - دلار تهران
+- alanchand - دلار تهران خرید
+- alanchand - دلار تهران فروش
+- Bonbast - دلار تهران فروش/current
+- Bonbast - دلار تهران خرید
+- Tabdeal - دلار تهران
+
+همه خروجی‌ها در نهایت به تومان نرمال می‌شوند. اگر منبع ریال بدهد، تقسیم بر ۱۰ می‌شود؛ اگر منبع تومان بدهد، بدون تبدیل ذخیره می‌شود.
+
+## خروجی‌ها
+
+دیتابیس محلی:
+
+```text
+data/market_data.db
 ```
 
-### حالت ۴: تست دستی
+آخرین payload آماده API:
 
-```yaml
-- source_code: "manual_test"
-  source_name: "تست دستی"
-  source_url: "manual://test"
-  enabled: true
-  method: "manual"
-  price_kind: "average"
-  manual_price_toman: 68500
+```text
+output/latest_payload.json
 ```
 
-## اتصال به جدول پویا در افراکالا
+## اتصال به API افرا کالا
 
-در `.env` این موارد را تنظیم کن:
+در `.env` یا متغیر محیطی ویندوز تنظیم کن:
 
 ```env
-AFRAKALA_API_BASE_URL=http://127.0.0.1:8000
-AFRAKALA_BOT_API_KEY=CHANGE_ME
-AFRAKALA_TABLE_SLUG=dollar-tehran-prices
+AFRA_API_URL=https://example.com/api/market-data/bulk
+AFRA_API_TOKEN=YOUR_TOKEN
 ```
 
-بعد در `config.yaml`:
+بعد در `configs/indicators.json` مقدار زیر را فعال کن:
 
-```yaml
-sync:
-  enabled: true
+```json
+"sync": {"enabled": true}
 ```
 
-ربات اول با این endpoint جدول را از روی slug پیدا می‌کند:
-
-```text
-GET /api/public/bot/dynamic-tables/by-slug/{slug}
-```
-
-بعد هر ردیف قیمت را با این endpoint می‌فرستد:
-
-```text
-POST /api/public/bot/dynamic-tables/{table_id}/rows/upsert
-```
-
-بدنه ارسالی شامل `unique_key` است تا هر منبع و هر زمان جمع‌آوری، یک ردیف جدا داشته باشد.
-
-## اجرای زمان‌بندی‌شده
-
-برای اجرای دائمی:
+و اجرا کن:
 
 ```bat
-run_loop.bat
+python main.py post
 ```
 
-فاصله اجرا از `config.yaml` تنظیم می‌شود:
+## اضافه‌کردن سایت جدید
 
-```yaml
-schedule:
-  interval_minutes: 15
+داخل `configs/indicators.json`، به شاخص مربوطه یک source اضافه کن:
+
+```json
+{
+  "code": "source_code",
+  "name": "نام سایت - نام شاخص",
+  "url": "https://example.com",
+  "enabled": true,
+  "price_kind": "current",
+  "unit": "rial",
+  "extractors": [
+    {"kind": "css", "selector": ".price"},
+    {"kind": "regex", "pattern": "([0-9,]+)"}
+  ]
+}
 ```
 
-## خروجی Excel/CSV
+انواع extractor فعلی:
 
-```bat
-python main.py export
-```
+- `css`: استخراج با CSS selector
+- `regex`: استخراج با regex از HTML
+- `row_contains`: پیدا کردن ردیف/بلوک بر اساس کلمات و سپس عدد داخل همان بلوک
 
-فایل‌ها در پوشه `output` ساخته می‌شوند.
+## استانداردهای اجباری پروژه
 
-## نکته مهم
-
-منابع نمونه واقعی نیستند و باید URL/selector/regex منابع واقعی خودت را در `config.yaml` وارد کنی. این کار عمدی است چون سایت‌ها ساختار ثابت ندارند و نباید کد را به یک سایت خاص قفل کنیم.
+- هیچ شاخصی نباید مستقیم داخل کد hard-code شود.
+- هر منبع باید `code` یکتا داشته باشد.
+- واحد ورودی هر منبع باید دقیق مشخص شود: `rial` یا `toman`.
+- همه زمان‌ها در داشبورد به ساعت ایران و تاریخ شمسی نمایش داده می‌شوند.
+- خروجی API همیشه تومان است.
+- اگر منبع خراب شد، نباید کل ربات بخوابد؛ فقط همان source خطا می‌گیرد.
