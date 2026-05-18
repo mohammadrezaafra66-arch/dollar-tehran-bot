@@ -93,6 +93,13 @@ def fetch_html(url: str, timeout: int, user_agent: str) -> str:
     return r.text
 
 
+def _non_empty(value: str, label: str) -> str:
+    value = '' if value is None else str(value).strip()
+    if not value:
+        raise ValueError(f'{label} returned empty text')
+    return value
+
+
 def extract_by_step(html: str, step: dict) -> str:
     kind = step.get('kind')
     soup = BeautifulSoup(html, 'html.parser')
@@ -100,12 +107,12 @@ def extract_by_step(html: str, step: dict) -> str:
         el = soup.select_one(step['selector'])
         if not el:
             raise ValueError('css selector not found')
-        return el.get_text(' ', strip=True)
+        return _non_empty(el.get_text(' ', strip=True), 'css selector')
     if kind == 'regex':
         m = re.search(step['pattern'], html, re.S)
         if not m:
             raise ValueError('regex not matched')
-        return m.group(1) if m.groups() else m.group(0)
+        return _non_empty(m.group(1) if m.groups() else m.group(0), 'regex')
     if kind == 'row_contains':
         words = step.get('contains', [])
         for row in soup.find_all(['tr','div','article']):
@@ -114,7 +121,7 @@ def extract_by_step(html: str, step: dict) -> str:
                 pat = step.get('number_pattern', r'([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)')
                 nums = re.findall(pat, txt)
                 if nums:
-                    return nums[int(step.get('index', 0))]
+                    return _non_empty(nums[int(step.get('index', 0))], 'row_contains')
         raise ValueError('row with requested words not found')
     raise ValueError(f'unknown extractor kind: {kind}')
 
@@ -135,7 +142,10 @@ def extract_source(indicator: dict, source: dict, app: dict) -> SourceResult:
             raw = None; last_error = None
             for step in source.get('extractors', []):
                 try:
-                    raw = extract_by_step(page, step); break
+                    candidate = extract_by_step(page, step)
+                    clean_number(candidate)
+                    raw = candidate
+                    break
                 except Exception as e:
                     last_error = str(e)
             if raw is None:
