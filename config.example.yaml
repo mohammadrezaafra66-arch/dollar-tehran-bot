@@ -48,11 +48,11 @@ sources:
     unit: "rial"
     regex: "نرخ فعلی[:：\\s]*([0-9۰-۹]{1,3}(?:[,،][0-9۰-۹]{3})+)"
 
-  - source_code: "alanchand_usd"
-    source_name: "الان چند - دلار تهران"
-    source_url: "https://alanchand.com/currencies-price/usd"
+  - source_code: "alanchand_usd_tehran_buy"
+    source_name: "الان‌چند - دلار تهران خرید"
+    source_url: "https://alanchand.com/en/currencies-price/usd"
     enabled: true
     method: "html_selector"
-    price_kind: "average"
-    unit: "toman"
-    selector: "section.container.mostPopularRate div.singleTop div.row > div.col-md-6.text-center.mt-3.mt-md-0:nth-of-type(1) div.d-flex.justify-content-between.align-items-center div.d-flex.flex-column.justify-content-between.align-items-center.mt-2 > span.fw-bold.text-success.fs-5:nth-of-type(1)"
+    price_kind: "buy"
+    unit: "rial"
+    selector: "body > main > section.container.mostPopularRate > div > div > div:nth-child(2) > div > div > div > div > span"
