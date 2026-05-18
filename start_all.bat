@@ -1,4 +1,6 @@
 @echo off
 cd /d %~dp0
-start "Afra Dashboard" start_dashboard.bat
-start "Afra Bot Loop" run_loop.bat
+call setup_env.bat
+if errorlevel 1 exit /b 1
+start "Afra Dashboard" cmd /k "call .venv\Scripts\activate && python dashboard.py"
+start "Afra Bot Loop" cmd /k "call .venv\Scripts\activate && python main.py run-loop"
