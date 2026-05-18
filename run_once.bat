@@ -1,7 +1,7 @@
 @echo off
 cd /d %~dp0
-if not exist .venv py -m venv .venv
+call setup_env.bat
+if errorlevel 1 exit /b 1
 call .venv\Scripts\activate
-pip install -r requirements.txt
 python main.py run-once
 pause
