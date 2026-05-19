@@ -66,11 +66,11 @@
           ]
         },
         {
-          "code": "bonbast_usd_tehran_current",
-          "name": "Bonbast - دلار تهران فروش/current",
+          "code": "bonbast_usd_tehran_sell",
+          "name": "Bonbast - دلار تهران فروش",
           "url": "https://www.bonbast.com/",
           "enabled": true,
-          "price_kind": "current",
+          "price_kind": "sell",
           "unit": "toman",
           "extractors": [
             {"kind": "css", "selector": "#usd1"},
