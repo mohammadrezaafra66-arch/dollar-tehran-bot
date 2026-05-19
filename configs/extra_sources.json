@@ -2,6 +2,8 @@
   "sources": [
     {
       "indicator_code": "usd_tehran",
+      "indicator_name": "دلار تهران",
+      "indicator_unit": "toman",
       "code": "bitpin_usd_tehran_current",
       "name": "Bitpin - دلار تهران",
       "url": "https://bitpin.ir/academy/live/currency/",
@@ -11,6 +13,22 @@
       "extractors": [
         {"kind": "css", "selector": "div[data-price-symbol=\"USDIRT\"] [data-price-value]"},
         {"kind": "row_contains", "contains": ["دلار (نرخ بازار)", "تومان"], "index": 0, "number_pattern": "([0-9۰-۹٠-٩]{1,3}(?:[,،٬][0-9۰-۹٠-٩]{3})+)"}
+      ]
+    },
+    {
+      "indicator_code": "XAU_USD",
+      "indicator_name": "انس جهانی طلا",
+      "indicator_unit": "usd",
+      "code": "tgju_xau_usd_current",
+      "name": "TGJU - انس جهانی طلا",
+      "url": "https://www.tgju.org/profile/ons",
+      "enabled": true,
+      "price_kind": "current",
+      "unit": "usd",
+      "extractors": [
+        {"kind": "css", "selector": "#main > div.stocks-profile > div.fs-row.bootstrap-fix.widgets.full-w-set.profile-social-share-box > div.row.tgju-widgets-row > div.tgju-widgets-block.col-md-12.col-lg-4.tgju-widgets-block-bottom-unset.overview-first-block > div > div:nth-child(2) > div > div.tables-default.normal > table > tbody > tr:nth-child(1) > td.text-left"},
+        {"kind": "row_contains", "contains": ["نرخ فعلی"], "index": 0, "number_pattern": "([0-9۰-۹٠-٩]{1,3}(?:[,،٬][0-9۰-۹٠-٩]{3})*(?:\\.[0-9۰-۹٠-٩]+)?)"},
+        {"kind": "regex", "pattern": "نرخ فعلی[\\s\\S]{0,160}?<td[^>]*class=\"text-left\"[^>]*>\\s*([0-9,،٬۰-۹٠-٩]+(?:\\.[0-9۰-۹٠-٩]+)?)\\s*</td>"}
       ]
     }
   ]
