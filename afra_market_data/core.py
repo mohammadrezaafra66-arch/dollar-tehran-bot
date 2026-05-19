@@ -53,7 +53,9 @@ def jalali_stamp(dt: datetime | None = None) -> dict[str,str]:
 def clean_number(text: str) -> int:
     if text is None:
         raise ValueError('empty number')
-    s = str(text).translate(FA_DIGITS).replace(',', '').replace('،','').replace(' ', '')
+    s = str(text).translate(FA_DIGITS)
+    for ch in [',', '،', '٬', ' ', '\u200e', '\u200f', '\xa0']:
+        s = s.replace(ch, '')
     m = re.search(r'-?\d+', s)
     if not m:
         raise ValueError(f'number not found in {text!r}')
@@ -118,7 +120,7 @@ def extract_by_step(html: str, step: dict) -> str:
         for row in soup.find_all(['tr','div','article']):
             txt = row.get_text(' ', strip=True)
             if all(w in txt for w in words):
-                pat = step.get('number_pattern', r'([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)')
+                pat = step.get('number_pattern', r'([0-9۰-۹٠-٩]{1,3}(?:[,،٬][0-9۰-۹٠-٩]{3})+)')
                 nums = re.findall(pat, txt)
                 if nums:
                     return _non_empty(nums[int(step.get('index', 0))], 'row_contains')
