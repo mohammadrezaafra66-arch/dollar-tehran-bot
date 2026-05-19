@@ -46,6 +46,52 @@
         {"kind": "row_contains", "contains": ["قیمت الان:", "دلار"], "index": 0, "number_pattern": "([0-9۰-۹٠-٩]{1,3}(?:[,،٬][0-9۰-۹٠-٩]{3})*(?:\\.[0-9۰-۹٠-٩]+)?)"},
         {"kind": "regex", "pattern": "قیمت الان:[\\s\\S]{0,260}?<span[^>]*>\\s*([0-9,،٬۰-۹٠-٩]+(?:\\.[0-9۰-۹٠-٩]+)?)\\s*</span>[\\s\\S]{0,80}?دلار"}
       ]
+    },
+    {
+      "indicator_code": "XAU_USD",
+      "indicator_name": "انس جهانی طلا",
+      "indicator_unit": "usd",
+      "code": "signal_xau_usd_current",
+      "name": "Signal - انس جهانی طلا",
+      "url": "https://isignal.ir/gold-currency/gold/",
+      "enabled": true,
+      "price_kind": "current",
+      "unit": "usd",
+      "extractors": [
+        {"kind": "row_contains", "contains": ["انس جهانی طلا", "دلار"], "index": 0, "number_pattern": "([0-9۰-۹٠-٩]{1,3}(?:[,،٬][0-9۰-۹٠-٩]{3})*(?:\\.[0-9۰-۹٠-٩]+)?)"},
+        {"kind": "regex", "pattern": "انس جهانی طلا[\\s\\S]{0,600}?direction-ltr[^>]*>\\s*([0-9,،٬۰-۹٠-٩]+(?:\\.[0-9۰-۹٠-٩]+)?)\\s*</span>[\\s\\S]{0,80}?دلار"}
+      ]
+    },
+    {
+      "indicator_code": "sekkeh",
+      "indicator_name": "سکه امامی",
+      "indicator_unit": "toman",
+      "code": "alanchand_sekkeh_current",
+      "name": "Alanchand - سکه امامی",
+      "url": "https://alanchand.com/gold-price/sekkeh",
+      "enabled": true,
+      "price_kind": "current",
+      "unit": "toman",
+      "extractors": [
+        {"kind": "row_contains", "contains": ["سکه امامی", "طرح جدید"], "index": 0, "number_pattern": "([0-9۰-۹٠-٩]{1,3}(?:[,،٬][0-9۰-۹٠-٩]{3})+)"},
+        {"kind": "css", "selector": "span.fw-bold.text-success.fs-5"},
+        {"kind": "regex", "pattern": "سکه امامی[\\s\\S]{0,800}?fw-bold text-success fs-5[^>]*>\\s*([0-9,،٬۰-۹٠-٩]+)\\s*</span>"}
+      ]
+    },
+    {
+      "indicator_code": "sekkeh",
+      "indicator_name": "سکه امامی",
+      "indicator_unit": "toman",
+      "code": "tala_ir_sekkeh_current",
+      "name": "Tala.ir - سکه امامی",
+      "url": "https://www.tala.ir/price/sekke-jad",
+      "enabled": true,
+      "price_kind": "current",
+      "unit": "toman",
+      "extractors": [
+        {"kind": "row_contains", "contains": ["آخرین قیمت"], "index": 0, "number_pattern": "([0-9۰-۹٠-٩]{1,3}(?:[,،٬][0-9۰-۹٠-٩]{3})+)"},
+        {"kind": "regex", "pattern": "آخرین قیمت[\\s\\S]{0,260}?<h3[^>]*>\\s*([0-9,،٬۰-۹٠-٩]+)\\s*</h3>"}
+      ]
     }
   ]
 }
