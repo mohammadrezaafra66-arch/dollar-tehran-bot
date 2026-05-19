@@ -20,6 +20,7 @@ TEHRAN = timezone(timedelta(hours=3, minutes=30))
 
 RANGES = {
     "usd_tehran": (10000, 1000000),
+    "usd-sulaymaniyah": (10000, 1000000),
     "aed_tehran": (1000, 200000),
     "eur_tehran": (10000, 2000000),
     "xau_usd": (500, 10000),
@@ -117,30 +118,31 @@ class SourceResult:
 
 
 def _merge_extra_sources(config: dict, config_path: Path) -> dict:
-    extra_path = config_path.parent / "extra_sources.json"
-    if not extra_path.exists():
-        return config
     merged = copy.deepcopy(config)
-    extra = json.loads(extra_path.read_text(encoding="utf-8"))
+    extra_paths = sorted(config_path.parent.glob("extra_sources*.json"))
+    if not extra_paths:
+        return merged
     indicators = {item.get("code"): item for item in merged.setdefault("indicators", [])}
-    for src in extra.get("sources", []):
-        indicator_code = src.get("indicator_code")
-        if not indicator_code:
-            continue
-        indicator = indicators.get(indicator_code)
-        if not indicator:
-            indicator = {
-                "code": indicator_code,
-                "name": src.get("indicator_name") or indicator_code,
-                "unit": src.get("indicator_unit") or src.get("unit") or "unit",
-                "sources": [],
-            }
-            merged["indicators"].append(indicator)
-            indicators[indicator_code] = indicator
-        clean_src = {k: v for k, v in src.items() if k not in ("indicator_code", "indicator_name", "indicator_unit")}
-        codes = {s.get("code") for s in indicator.setdefault("sources", [])}
-        if clean_src.get("code") not in codes:
-            indicator["sources"].append(clean_src)
+    for extra_path in extra_paths:
+        extra = json.loads(extra_path.read_text(encoding="utf-8"))
+        for src in extra.get("sources", []):
+            indicator_code = src.get("indicator_code")
+            if not indicator_code:
+                continue
+            indicator = indicators.get(indicator_code)
+            if not indicator:
+                indicator = {
+                    "code": indicator_code,
+                    "name": src.get("indicator_name") or indicator_code,
+                    "unit": src.get("indicator_unit") or src.get("unit") or "unit",
+                    "sources": [],
+                }
+                merged["indicators"].append(indicator)
+                indicators[indicator_code] = indicator
+            clean_src = {k: v for k, v in src.items() if k not in ("indicator_code", "indicator_name", "indicator_unit")}
+            codes = {s.get("code") for s in indicator.setdefault("sources", [])}
+            if clean_src.get("code") not in codes:
+                indicator["sources"].append(clean_src)
     return merged
 
 
