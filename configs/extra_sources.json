@@ -92,6 +92,53 @@
         {"kind": "row_contains", "contains": ["آخرین قیمت"], "index": 0, "number_pattern": "([0-9۰-۹٠-٩]{1,3}(?:[,،٬][0-9۰-۹٠-٩]{3})+)"},
         {"kind": "regex", "pattern": "آخرین قیمت[\\s\\S]{0,260}?<h3[^>]*>\\s*([0-9,،٬۰-۹٠-٩]+)\\s*</h3>"}
       ]
+    },
+    {
+      "indicator_code": "sekkeh",
+      "indicator_name": "سکه امامی",
+      "indicator_unit": "toman",
+      "code": "talasea_sekkeh_current",
+      "name": "Talasea - سکه امامی",
+      "url": "https://talasea.ir/seke-emami",
+      "enabled": true,
+      "price_kind": "current",
+      "unit": "toman",
+      "extractors": [
+        {"kind": "row_contains", "contains": ["قیمت سکه امامی", "تومان"], "index": 0, "number_pattern": "([0-9۰-۹٠-٩]{1,3}(?:[,،٬][0-9۰-۹٠-٩]{3})+)"},
+        {"kind": "regex", "pattern": "قیمت سکه امامی[\\s\\S]{0,240}?text-subtitle2Bold[^>]*>\\s*([0-9,،٬۰-۹٠-٩]+)\\s*<span[\\s\\S]{0,80}?تومان"}
+      ]
+    },
+    {
+      "indicator_code": "geram18",
+      "indicator_name": "طلا 18 عیار",
+      "indicator_unit": "toman",
+      "code": "milli_geram18_current",
+      "name": "Milli - طلا 18 عیار",
+      "url": "https://milli.gold/landing/geram18/",
+      "enabled": true,
+      "price_kind": "current",
+      "unit": "rial",
+      "extractors": [
+        {"kind": "css", "selector": "tr.geram18 td.last_price.real_price_18"},
+        {"kind": "row_contains", "contains": ["طلای ۱۸ عیار"], "index": 0, "number_pattern": "([0-9۰-۹٠-٩]{1,3}(?:[,،٬][0-9۰-۹٠-٩]{3})+)"},
+        {"kind": "regex", "pattern": "geram18[\\s\\S]{0,350}?real_price_18[^>]*>\\s*([0-9,،٬۰-۹٠-٩]+)\\s*</td>"}
+      ]
+    },
+    {
+      "indicator_code": "geram18",
+      "indicator_name": "طلا 18 عیار",
+      "indicator_unit": "toman",
+      "code": "tgju_geram18_current",
+      "name": "TGJU - طلا 18 عیار",
+      "url": "https://www.tgju.org/profile/geram18",
+      "enabled": true,
+      "price_kind": "current",
+      "unit": "rial",
+      "extractors": [
+        {"kind": "css", "selector": "#main > div.stocks-profile > div.fs-row.bootstrap-fix.widgets.full-w-set.profile-social-share-box > div.row.tgju-widgets-row > div.tgju-widgets-block.col-md-12.col-lg-4.tgju-widgets-block-bottom-unset.overview-first-block > div > div:nth-child(2) > div > div.tables-default.normal > table > tbody > tr:nth-child(1) > td.text-left"},
+        {"kind": "row_contains", "contains": ["نرخ فعلی"], "index": 0, "number_pattern": "([0-9۰-۹٠-٩]{1,3}(?:[,،٬][0-9۰-۹٠-٩]{3})+)"},
+        {"kind": "regex", "pattern": "نرخ فعلی[\\s\\S]{0,160}?<td[^>]*class=\"text-left\"[^>]*>\\s*([0-9,،٬۰-۹٠-٩]+)\\s*</td>"}
+      ]
     }
   ]
 }
