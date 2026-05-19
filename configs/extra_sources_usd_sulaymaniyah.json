@@ -1,0 +1,50 @@
+{
+  "sources": [
+    {
+      "indicator_code": "usd-sulaymaniyah",
+      "indicator_name": "دلار سلیمانیه",
+      "indicator_unit": "toman",
+      "code": "alanchand_usd_sulaymaniyah_buy",
+      "name": "Alanchand - دلار سلیمانیه خرید",
+      "url": "https://alanchand.com/currencies-price/usd-sulaymaniyah",
+      "enabled": true,
+      "price_kind": "buy",
+      "unit": "toman",
+      "extractors": [
+        {"kind": "css", "selector": "body > main > section.container.mostPopularRate > div > div > div:nth-child(2) > div > div > div > div > span"},
+        {"kind": "row_contains", "contains": ["قیمت خرید دلار سلیمانیه"], "index": 0, "number_pattern": "([0-9۰-۹٠-٩]{1,3}(?:[,،٬][0-9۰-۹٠-٩]{3})+)"}
+      ]
+    },
+    {
+      "indicator_code": "usd-sulaymaniyah",
+      "indicator_name": "دلار سلیمانیه",
+      "indicator_unit": "toman",
+      "code": "alanchand_usd_sulaymaniyah_sell",
+      "name": "Alanchand - دلار سلیمانیه فروش",
+      "url": "https://alanchand.com/currencies-price/usd-sulaymaniyah",
+      "enabled": true,
+      "price_kind": "sell",
+      "unit": "toman",
+      "extractors": [
+        {"kind": "css", "selector": "body > main > section.container.mostPopularRate > div > div > div:nth-child(1) > div > div > div > div > span.fw-bold.text-success.fs-5"},
+        {"kind": "row_contains", "contains": ["قیمت فروش دلار سلیمانیه"], "index": 0, "number_pattern": "([0-9۰-۹٠-٩]{1,3}(?:[,،٬][0-9۰-۹٠-٩]{3})+)"}
+      ]
+    },
+    {
+      "indicator_code": "usd-sulaymaniyah",
+      "indicator_name": "دلار سلیمانیه",
+      "indicator_unit": "toman",
+      "code": "tgju_usd_sulaymaniyah_current",
+      "name": "TGJU - دلار سلیمانیه",
+      "url": "https://www.tgju.org/profile/price_dollar_soleymani",
+      "enabled": true,
+      "price_kind": "current",
+      "unit": "rial",
+      "extractors": [
+        {"kind": "css", "selector": "#main > div.stocks-profile > div.fs-row.bootstrap-fix.widgets.full-w-set.profile-social-share-box > div.row.tgju-widgets-row > div.tgju-widgets-block.col-md-12.col-lg-4.tgju-widgets-block-bottom-unset.overview-first-block > div > div:nth-child(2) > div > div.tables-default.normal > table > tbody > tr:nth-child(1) > td.text-left"},
+        {"kind": "row_contains", "contains": ["نرخ فعلی"], "index": 0, "number_pattern": "([0-9۰-۹٠-٩]{1,3}(?:[,،٬][0-9۰-۹٠-٩]{3})+)"},
+        {"kind": "regex", "pattern": "نرخ فعلی[\\s\\S]{0,160}?<td[^>]*class=\"text-left\"[^>]*>\\s*([0-9,،٬۰-۹٠-٩]+)\\s*</td>"}
+      ]
+    }
+  ]
+}
