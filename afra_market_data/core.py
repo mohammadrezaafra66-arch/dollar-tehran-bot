@@ -18,6 +18,13 @@ from bs4 import BeautifulSoup
 FA_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 TEHRAN = timezone(timedelta(hours=3, minutes=30))
 
+RANGES = {
+    "usd_tehran": (10000, 1000000),
+    "aed_tehran": (1000, 200000),
+    "eur_tehran": (10000, 2000000),
+    "xau_usd": (500, 10000),
+}
+
 
 def now_tehran() -> datetime:
     return datetime.now(TEHRAN)
@@ -45,8 +52,8 @@ def gregorian_to_jalali(gy: int, gm: int, gd: int):
     return jy, jm, jd
 
 
-def fa_num(v: Any) -> str:
-    return str(v).translate(str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹"))
+def fa_num(value: Any) -> str:
+    return str(value).translate(str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹"))
 
 
 def jalali_stamp(dt: datetime | None = None) -> dict[str, str]:
@@ -67,17 +74,26 @@ def clean_number(text: str) -> float:
     s = str(text).translate(FA_DIGITS)
     for ch in [",", "،", "٬", " ", "\u200e", "\u200f", "\xa0"]:
         s = s.replace(ch, "")
-    m = re.search(r"-?\d+(?:\.\d+)?", s)
-    if not m:
+    match = re.search(r"-?\d+(?:\.\d+)?", s)
+    if not match:
         raise ValueError(f"number not found in {text!r}")
-    value = float(m.group(0))
+    value = float(match.group(0))
     return int(value) if value.is_integer() else value
 
 
 def normalize(value: float, unit: str) -> float:
     unit = (unit or "toman").lower()
-    value = value / 10 if unit in ("rial", "irr", "ریال") else value
+    value = value / 10 if unit in ("rial", "irr") else value
     return int(value) if float(value).is_integer() else round(value, 6)
+
+
+def validate_value(indicator_code: str, value: float, unit: str) -> None:
+    bounds = RANGES.get((indicator_code or "").lower())
+    if not bounds:
+        return
+    low, high = bounds
+    if not (low <= float(value) <= high):
+        raise ValueError(f"value out of expected range for {indicator_code}: {value} {unit}")
 
 
 @dataclass
@@ -104,9 +120,11 @@ def _merge_extra_sources(config: dict, config_path: Path) -> dict:
         return config
     merged = copy.deepcopy(config)
     extra = json.loads(extra_path.read_text(encoding="utf-8"))
-    indicators = {i.get("code"): i for i in merged.setdefault("indicators", [])}
+    indicators = {item.get("code"): item for item in merged.setdefault("indicators", [])}
     for src in extra.get("sources", []):
         indicator_code = src.get("indicator_code")
+        if not indicator_code:
+            continue
         indicator = indicators.get(indicator_code)
         if not indicator:
             indicator = {
@@ -124,16 +142,16 @@ def _merge_extra_sources(config: dict, config_path: Path) -> dict:
     return merged
 
 
-def load_config(path="configs/indicators.json") -> dict:
+def load_config(path: str = "configs/indicators.json") -> dict:
     config_path = Path(path)
     config = json.loads(config_path.read_text(encoding="utf-8"))
     return _merge_extra_sources(config, config_path)
 
 
 def fetch_html(url: str, timeout: int, user_agent: str) -> str:
-    res = requests.get(url, timeout=timeout, headers={"User-Agent": user_agent, "Accept-Language": "fa,en;q=0.8"})
-    res.raise_for_status()
-    return res.text
+    response = requests.get(url, timeout=timeout, headers={"User-Agent": user_agent, "Accept-Language": "fa,en;q=0.8"})
+    response.raise_for_status()
+    return response.text
 
 
 def _non_empty(value: str, label: str) -> str:
@@ -147,24 +165,24 @@ def extract_by_step(page: str, step: dict) -> str:
     kind = step.get("kind")
     soup = BeautifulSoup(page, "html.parser")
     if kind == "css":
-        el = soup.select_one(step["selector"])
-        if not el:
+        element = soup.select_one(step["selector"])
+        if not element:
             raise ValueError("css selector not found")
-        return _non_empty(el.get_text(" ", strip=True), "css selector")
+        return _non_empty(element.get_text(" ", strip=True), "css selector")
     if kind == "regex":
-        m = re.search(step["pattern"], page, re.S)
-        if not m:
+        match = re.search(step["pattern"], page, re.S)
+        if not match:
             raise ValueError("regex not matched")
-        return _non_empty(m.group(1) if m.groups() else m.group(0), "regex")
+        return _non_empty(match.group(1) if match.groups() else match.group(0), "regex")
     if kind == "row_contains":
         words = step.get("contains", [])
         pattern = step.get("number_pattern", r"([0-9۰-۹٠-٩]{1,3}(?:[,،٬][0-9۰-۹٠-٩]{3})*(?:\.[0-9۰-۹٠-٩]+)?)")
         for row in soup.find_all(["tr", "div", "article"]):
-            txt = row.get_text(" ", strip=True)
-            if all(w in txt for w in words):
-                nums = re.findall(pattern, txt)
-                if nums:
-                    return _non_empty(nums[int(step.get("index", 0))], "row_contains")
+            text = row.get_text(" ", strip=True)
+            if all(word in text for word in words):
+                numbers = re.findall(pattern, text)
+                if numbers:
+                    return _non_empty(numbers[int(step.get("index", 0))], "row_contains")
         raise ValueError("row with requested words not found")
     raise ValueError(f"unknown extractor kind: {kind}")
 
@@ -193,7 +211,8 @@ def extract_source(indicator: dict, source: dict, app: dict) -> SourceResult:
             for step in source.get("extractors", []):
                 try:
                     candidate = extract_by_step(page, step)
-                    clean_number(candidate)
+                    value_candidate = normalize(clean_number(candidate), source.get("unit", "toman"))
+                    validate_value(indicator["code"], value_candidate, source.get("unit", "toman"))
                     raw = candidate
                     break
                 except Exception as exc:
@@ -201,6 +220,7 @@ def extract_source(indicator: dict, source: dict, app: dict) -> SourceResult:
             if raw is None:
                 raise ValueError(last_error or "no extractor matched")
         value = normalize(clean_number(raw), source.get("unit", "toman"))
+        validate_value(indicator["code"], value, source.get("unit", "toman"))
         return SourceResult(**base, ok=True, value_toman=value, raw_value=raw, error=None)
     except Exception as exc:
         return SourceResult(**base, ok=False, value_toman=None, raw_value=None, error=f"{type(exc).__name__}: {exc}")
@@ -208,65 +228,85 @@ def extract_source(indicator: dict, source: dict, app: dict) -> SourceResult:
 
 def ensure_db(path: str):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(path)
-    con.execute("""create table if not exists results(
-        id integer primary key autoincrement, indicator_code text, source_code text, price_kind text,
-        ok integer, value_toman real, raw_value text, error text, payload text, collected_at text
+    connection = sqlite3.connect(path)
+    connection.execute("""create table if not exists results(
+        id integer primary key autoincrement,
+        indicator_code text,
+        source_code text,
+        price_kind text,
+        ok integer,
+        value_toman real,
+        raw_value text,
+        error text,
+        payload text,
+        collected_at text
     )""")
-    con.execute("""create table if not exists snapshots(
-        id integer primary key autoincrement, indicator_code text, indicator_name text,
-        value_toman real, source_count integer, ok_count integer, payload text, created_at text
+    connection.execute("""create table if not exists snapshots(
+        id integer primary key autoincrement,
+        indicator_code text,
+        indicator_name text,
+        value_toman real,
+        source_count integer,
+        ok_count integer,
+        payload text,
+        created_at text
     )""")
-    con.commit()
-    return con
+    connection.commit()
+    return connection
 
 
-def save_results(db_path: str, results: list[SourceResult], snapshots: list[dict]):
-    con = ensure_db(db_path)
-    for r in results:
-        con.execute("insert into results(indicator_code,source_code,price_kind,ok,value_toman,raw_value,error,payload,collected_at) values(?,?,?,?,?,?,?,?,?)", (r.indicator_code, r.source_code, r.price_kind, 1 if r.ok else 0, r.value_toman, r.raw_value, r.error, json.dumps(asdict(r), ensure_ascii=False), r.collected_at))
-    for s in snapshots:
-        con.execute("insert into snapshots(indicator_code,indicator_name,value_toman,source_count,ok_count,payload,created_at) values(?,?,?,?,?,?,?)", (s["indicator_code"], s["indicator_name"], s.get("value_toman"), s["source_count"], s["ok_count"], json.dumps(s, ensure_ascii=False), s["created_at"]))
-    con.commit()
-    con.close()
+def save_results(db_path: str, results: list[SourceResult], snapshots: list[dict]) -> None:
+    connection = ensure_db(db_path)
+    for row in results:
+        connection.execute(
+            "insert into results(indicator_code,source_code,price_kind,ok,value_toman,raw_value,error,payload,collected_at) values(?,?,?,?,?,?,?,?,?)",
+            (row.indicator_code, row.source_code, row.price_kind, 1 if row.ok else 0, row.value_toman, row.raw_value, row.error, json.dumps(asdict(row), ensure_ascii=False), row.collected_at),
+        )
+    for snap in snapshots:
+        connection.execute(
+            "insert into snapshots(indicator_code,indicator_name,value_toman,source_count,ok_count,payload,created_at) values(?,?,?,?,?,?,?)",
+            (snap["indicator_code"], snap["indicator_name"], snap.get("value_toman"), snap["source_count"], snap["ok_count"], json.dumps(snap, ensure_ascii=False), snap["created_at"]),
+        )
+    connection.commit()
+    connection.close()
 
 
 def build_snapshots(config: dict, results: list[SourceResult]) -> list[dict]:
-    out = []
-    for ind in config.get("indicators", []):
-        group = [r for r in results if r.indicator_code == ind["code"]]
-        good = [r.value_toman for r in group if r.ok and r.value_toman is not None]
+    snapshots = []
+    for indicator in config.get("indicators", []):
+        group = [row for row in results if row.indicator_code == indicator["code"]]
+        good_values = [row.value_toman for row in group if row.ok and row.value_toman is not None]
         stamp = jalali_stamp()
-        median_value = statistics.median(good) if good else None
-        out.append({
-            "indicator_code": ind["code"],
-            "indicator_name": ind["name"],
-            "unit": ind.get("unit", "unit"),
-            "value_toman": median_value,
+        snapshots.append({
+            "indicator_code": indicator["code"],
+            "indicator_name": indicator["name"],
+            "unit": indicator.get("unit", "unit"),
+            "value_toman": statistics.median(good_values) if good_values else None,
             "source_count": len(group),
-            "ok_count": len(good),
+            "ok_count": len(good_values),
             "created_at": stamp["gregorian"],
             "created_at_jalali": stamp["jalali_date"],
             "created_time_iran": stamp["iran_time"],
-            "sources": [asdict(r) for r in group],
+            "sources": [asdict(row) for row in group],
         })
-    return out
+    return snapshots
 
 
-def run_once(config_path="configs/indicators.json") -> dict:
-    cfg = load_config(config_path)
-    app = cfg.get("app", {})
+def run_once(config_path: str = "configs/indicators.json") -> dict:
+    config = load_config(config_path)
+    app = config.get("app", {})
     results = []
-    for ind in cfg.get("indicators", []):
-        for src in ind.get("sources", []):
-            if src.get("enabled", True):
-                results.append(extract_source(ind, src, app))
+    for indicator in config.get("indicators", []):
+        for source in indicator.get("sources", []):
+            if source.get("enabled", True):
+                results.append(extract_source(indicator, source, app))
                 time.sleep(app.get("sleep_between_sources_seconds", 0))
-    snapshots = build_snapshots(cfg, results)
+    snapshots = build_snapshots(config, results)
     save_results(app.get("sqlite_path", "data/market_data.db"), results, snapshots)
     payload = {"meta": {"project": "afra_market_data", "generated_at": jalali_stamp()}, "snapshots": snapshots}
-    Path(app.get("output_dir", "output")).mkdir(parents=True, exist_ok=True)
-    Path(app.get("output_dir", "output"), "latest_payload.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    output_dir = Path(app.get("output_dir", "output"))
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "latest_payload.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return payload
 
 
@@ -281,15 +321,15 @@ def post_to_afra(payload: dict, config: dict) -> tuple[bool, str]:
     headers = {"Content-Type": "application/json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    res = requests.post(url, json=payload, headers=headers, timeout=sync.get("timeout_seconds", 30))
-    return res.ok, f"{res.status_code} {res.text[:300]}"
+    response = requests.post(url, json=payload, headers=headers, timeout=sync.get("timeout_seconds", 30))
+    return response.ok, f"{response.status_code} {response.text[:300]}"
 
 
-def latest_rows(db_path="data/market_data.db", limit=100):
+def latest_rows(db_path: str = "data/market_data.db", limit: int = 100):
     if not Path(db_path).exists():
         return []
-    con = sqlite3.connect(db_path)
-    con.row_factory = sqlite3.Row
-    rows = con.execute("select * from results order by id desc limit ?", (limit,)).fetchall()
-    con.close()
-    return [dict(x) for x in rows]
+    connection = sqlite3.connect(db_path)
+    connection.row_factory = sqlite3.Row
+    rows = connection.execute("select * from results order by id desc limit ?", (limit,)).fetchall()
+    connection.close()
+    return [dict(row) for row in rows]
