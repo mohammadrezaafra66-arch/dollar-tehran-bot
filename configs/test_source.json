@@ -1,1 +1,46 @@
-{"sources":[]}
+{
+  "sources": [
+    {
+      "indicator_code": "geram18",
+      "indicator_name": "geram18",
+      "indicator_unit": "toman",
+      "code": "wallgold_geram18_current",
+      "name": "Wallgold Geram18",
+      "url": "https://wallgold.ir/gold-price/",
+      "enabled": true,
+      "price_kind": "current",
+      "unit": "toman",
+      "extractors": [
+        {"kind": "css", "selector": "span.wg-price-text"}
+      ]
+    },
+    {
+      "indicator_code": "geram18",
+      "indicator_name": "geram18",
+      "indicator_unit": "toman",
+      "code": "talasea_geram18_current",
+      "name": "Talasea Geram18",
+      "url": "https://talasea.ir/geram18",
+      "enabled": true,
+      "price_kind": "current",
+      "unit": "toman",
+      "extractors": [
+        {"kind": "regex", "pattern": "text-subtitle2Bold[^>]*>\\s*([0-9,]+)\\s*<span[\\s\\S]{0,80}?toman"}
+      ]
+    },
+    {
+      "indicator_code": "geram18",
+      "indicator_name": "geram18",
+      "indicator_unit": "toman",
+      "code": "melligold_geram18_current",
+      "name": "Melligold Geram18",
+      "url": "https://melligold.com/",
+      "enabled": true,
+      "price_kind": "current",
+      "unit": "toman",
+      "extractors": [
+        {"kind": "regex", "pattern": "font-bold[^>]*>\\s*([0-9۰-۹٠-٩٬,]+)\\s*<span[\\s\\S]{0,80}"}
+      ]
+    }
+  ]
+}
