@@ -2,17 +2,40 @@
   "app": {
     "timezone": "Asia/Tehran",
     "timeout_seconds": 20,
-    "sleep_between_sources_seconds": 1,
     "sqlite_path": "data/market_data.db",
     "output_dir": "output",
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
   },
-  "schedule": {"interval_minutes": 3},
-  "sync": {"enabled": false, "api_url": "${AFRA_API_URL}", "api_token": "${AFRA_API_TOKEN}", "timeout_seconds": 30},
+  "collector": {
+    "mode": "parallel",
+    "max_workers": 20,
+    "default_poll_interval_seconds": 30,
+    "dashboard_poll_interval_seconds": 15,
+    "target_capacity_note": "Designed for 50 indicators x 5 sources = 250 sources"
+  },
+  "dashboard": {
+    "stream_refresh_seconds": 3,
+    "live_without_manual_refresh": true
+  },
+  "quality": {
+    "aggregation_method": "median",
+    "freshness_window_seconds": 900,
+    "compare_window_seconds": 1200,
+    "min_healthy_sources_per_indicator": 2,
+    "outlier_detection_enabled": false,
+    "outlier_max_deviation_percent": 3
+  },
+  "sync": {
+    "enabled": false,
+    "api_url": "${AFRA_API_URL}",
+    "api_token": "${AFRA_API_TOKEN}",
+    "timeout_seconds": 30
+  },
   "indicators": [
     {
       "code": "usd_tehran",
       "name": "دلار تهران",
+      "category": "currency",
       "unit": "toman",
       "sources": [
         {
@@ -20,13 +43,16 @@
           "name": "TGJU - دلار تهران",
           "url": "https://www.tgju.org/profile/price_dollar_rl",
           "enabled": true,
+          "channel": "website",
           "price_kind": "current",
           "unit": "rial",
+          "priority": 10,
+          "weight": 1,
+          "poll_interval_seconds": 30,
           "extractors": [
             {"kind": "css", "selector": "#main > div.stocks-profile > div.fs-row.bootstrap-fix.widgets.full-w-set.profile-social-share-box > div.row.tgju-widgets-row > div.tgju-widgets-block.col-md-12.col-lg-4.tgju-widgets-block-bottom-unset.overview-first-block > div > div:nth-child(2) > div > div.tables-default.normal > table > tbody > tr:nth-child(1) > td.text-left"},
-            {"kind": "css", "selector": "td.text-left"},
             {"kind": "regex", "pattern": "نرخ فعلی[:：\\s]*([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"},
-            {"kind": "regex", "pattern": "<td[^>]*class=\\\"text-left\\\"[^>]*>\\s*([0-9,۰-۹٠-٩]+)\\s*</td>"}
+            {"kind": "regex", "pattern": "<td[^>]*class=\\\"text-left\\\"[^>]*>([0-9,۰-۹٠-٩]+)</td>"}
           ]
         },
         {
@@ -34,8 +60,12 @@
           "name": "signal - دلار تهران",
           "url": "https://isignal.ir/gold-currency/usdollar/",
           "enabled": true,
+          "channel": "website",
           "price_kind": "current",
           "unit": "rial",
+          "priority": 20,
+          "weight": 1,
+          "poll_interval_seconds": 30,
           "extractors": [
             {"kind": "row_contains", "contains": ["دلار", "ریال"], "index": 0},
             {"kind": "regex", "pattern": "<span class=\\\"text-surface-on-surface text-app-title-md[^\\\"]*direction-ltr\\\">([0-9,]+)</span>"}
@@ -46,8 +76,12 @@
           "name": "alanchand - دلار تهران خرید",
           "url": "https://alanchand.com/en/currencies-price/usd",
           "enabled": true,
+          "channel": "website",
           "price_kind": "buy",
           "unit": "rial",
+          "priority": 40,
+          "weight": 1,
+          "poll_interval_seconds": 60,
           "extractors": [
             {"kind": "css", "selector": "body > main > section.container.mostPopularRate > div > div > div:nth-child(2) > div > div > div > div > span"},
             {"kind": "row_contains", "contains": ["Buy rate for USD to IRR"], "index": 0}
@@ -58,48 +92,56 @@
           "name": "alanchand - دلار تهران فروش",
           "url": "https://alanchand.com/en/currencies-price/usd",
           "enabled": true,
+          "channel": "website",
           "price_kind": "sell",
           "unit": "rial",
+          "priority": 40,
+          "weight": 1,
+          "poll_interval_seconds": 60,
           "extractors": [
             {"kind": "css", "selector": "body > main > section.container.mostPopularRate > div > div > div:nth-child(1) > div > div > div > div > span.fw-bold.text-success.fs-5"},
             {"kind": "row_contains", "contains": ["Sell rate for USD to IRR"], "index": 0}
           ]
         },
         {
-          "code": "bonbast_usd_tehran_sell",
-          "name": "Bonbast - دلار تهران فروش",
+          "code": "bonbast_usd_tehran_current",
+          "name": "Bonbast - دلار تهران فروش/current",
           "url": "https://www.bonbast.com/",
-          "enabled": false,
-          "price_kind": "sell",
+          "enabled": true,
+          "channel": "website",
+          "price_kind": "current",
           "unit": "toman",
-          "note": "Disabled temporarily: value is visible in browser but not stable in raw HTTP response. Needs browser-based extractor.",
-          "extractors": [
-            {"kind": "css", "selector": "#usd1"},
-            {"kind": "regex", "pattern": "<td[^>]*id=\\\"usd1\\\"[^>]*>\\s*([0-9,۰-۹٠-٩]+)\\s*</td>"}
-          ]
+          "priority": 30,
+          "weight": 1,
+          "poll_interval_seconds": 30,
+          "extractors": [{"kind": "css", "selector": "#usd1"}]
         },
         {
           "code": "bonbast_usd_tehran_buy",
           "name": "Bonbast - دلار تهران خرید",
           "url": "https://www.bonbast.com/",
-          "enabled": false,
+          "enabled": true,
+          "channel": "website",
           "price_kind": "buy",
           "unit": "toman",
-          "note": "Disabled temporarily: value is visible in browser but not stable in raw HTTP response. Needs browser-based extractor.",
-          "extractors": [
-            {"kind": "css", "selector": "#usd2"},
-            {"kind": "regex", "pattern": "<td[^>]*id=\\\"usd2\\\"[^>]*>\\s*([0-9,۰-۹٠-٩]+)\\s*</td>"}
-          ]
+          "priority": 30,
+          "weight": 1,
+          "poll_interval_seconds": 30,
+          "extractors": [{"kind": "css", "selector": "#usd2"}]
         },
         {
           "code": "tabdeal_usd_tehran_current",
           "name": "Tabdeal - دلار تهران",
           "url": "https://tabdeal.org/live/currency",
-          "enabled": false,
+          "enabled": true,
+          "channel": "website",
           "price_kind": "current",
           "unit": "toman",
-          "note": "Disabled temporarily: current extractor can capture non-price values. Needs a more precise selector or structured source.",
+          "priority": 50,
+          "weight": 1,
+          "poll_interval_seconds": 60,
           "extractors": [
+            {"kind": "row_contains", "contains": ["دلار", "تومان"], "index": 0},
             {"kind": "regex", "pattern": "دلار[\\s\\S]{0,250}?تومان[\\s\\S]{0,80}?([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"}
           ]
         }
@@ -108,6 +150,7 @@
     {
       "code": "aed_tehran",
       "name": "درهم امارات",
+      "category": "currency",
       "unit": "toman",
       "sources": [
         {
@@ -115,20 +158,20 @@
           "name": "TGJU - درهم امارات",
           "url": "https://www.tgju.org/profile/price_aed",
           "enabled": true,
+          "channel": "website",
           "price_kind": "current",
           "unit": "rial",
-          "extractors": [
-            {"kind": "css", "selector": "#main > div.stocks-profile > div.fs-row.bootstrap-fix.widgets.full-w-set.profile-social-share-box > div.row.tgju-widgets-row > div.tgju-widgets-block.col-md-12.col-lg-4.tgju-widgets-block-bottom-unset.overview-first-block > div > div:nth-child(2) > div > div.tables-default.normal > table > tbody > tr:nth-child(1) > td.text-left"},
-            {"kind": "css", "selector": "td.text-left"},
-            {"kind": "regex", "pattern": "نرخ فعلی[:：\\s]*([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"},
-            {"kind": "regex", "pattern": "<td[^>]*class=\\\"text-left\\\"[^>]*>\\s*([0-9,۰-۹٠-٩]+)\\s*</td>"}
-          ]
+          "priority": 10,
+          "weight": 1,
+          "poll_interval_seconds": 60,
+          "extractors": [{"kind": "regex", "pattern": "نرخ فعلی[:：\\s]*([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"}]
         }
       ]
     },
     {
       "code": "eur_tehran",
       "name": "یورو",
+      "category": "currency",
       "unit": "toman",
       "sources": [
         {
@@ -136,14 +179,13 @@
           "name": "TGJU - یورو",
           "url": "https://www.tgju.org/profile/price_eur",
           "enabled": true,
+          "channel": "website",
           "price_kind": "current",
           "unit": "rial",
-          "extractors": [
-            {"kind": "css", "selector": "#main > div.stocks-profile > div.fs-row.bootstrap-fix.widgets.full-w-set.profile-social-share-box > div.row.tgju-widgets-row > div.tgju-widgets-block.col-md-12.col-lg-4.tgju-widgets-block-bottom-unset.overview-first-block > div > div:nth-child(2) > div > div.tables-default.normal > table > tbody > tr:nth-child(1) > td.text-left"},
-            {"kind": "css", "selector": "td.text-left"},
-            {"kind": "regex", "pattern": "نرخ فعلی[:：\\s]*([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"},
-            {"kind": "regex", "pattern": "<td[^>]*class=\\\"text-left\\\"[^>]*>\\s*([0-9,۰-۹٠-٩]+)\\s*</td>"}
-          ]
+          "priority": 10,
+          "weight": 1,
+          "poll_interval_seconds": 60,
+          "extractors": [{"kind": "regex", "pattern": "نرخ فعلی[:：\\s]*([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"}]
         }
       ]
     }
