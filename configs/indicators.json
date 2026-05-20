@@ -13,7 +13,10 @@
     "dashboard_poll_interval_seconds": 15,
     "target_capacity_note": "Designed for 50 indicators x 5 sources = 250 sources"
   },
-  "dashboard": {"stream_refresh_seconds": 3, "live_without_manual_refresh": true},
+  "dashboard": {
+    "stream_refresh_seconds": 3,
+    "live_without_manual_refresh": true
+  },
   "quality": {
     "aggregation_method": "median",
     "freshness_window_seconds": 900,
@@ -22,7 +25,12 @@
     "outlier_detection_enabled": false,
     "outlier_max_deviation_percent": 3
   },
-  "sync": {"enabled": false, "api_url": "${AFRA_API_URL}", "api_token": "${AFRA_API_TOKEN}", "timeout_seconds": 30},
+  "sync": {
+    "enabled": false,
+    "api_url": "${AFRA_API_URL}",
+    "api_token": "${AFRA_API_TOKEN}",
+    "timeout_seconds": 30
+  },
   "indicators": [
     {
       "code": "usd_tehran",
@@ -30,25 +38,225 @@
       "category": "currency",
       "unit": "toman",
       "sources": [
-        {"code": "tgju_usd_tehran_current", "name": "TGJU - دلار تهران", "url": "https://www.tgju.org/profile/price_dollar_rl", "enabled": true, "channel": "website", "price_kind": "current", "unit": "rial", "priority": 10, "weight": 1, "poll_interval_seconds": 30, "extractors": [{"kind": "css", "selector": "#main > div.stocks-profile > div.fs-row.bootstrap-fix.widgets.full-w-set.profile-social-share-box > div.row.tgju-widgets-row > div.tgju-widgets-block.col-md-12.col-lg-4.tgju-widgets-block-bottom-unset.overview-first-block > div > div:nth-child(2) > div > div.tables-default.normal > table > tbody > tr:nth-child(1) > td.text-left"}, {"kind": "regex", "pattern": "نرخ فعلی[:：\\s]*([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"}, {"kind": "regex", "pattern": "<td[^>]*class=\\\"text-left\\\"[^>]*>([0-9,۰-۹٠-٩]+)</td>"}]},
-        {"code": "signal_usd_tehran_current", "name": "signal - دلار تهران", "url": "https://isignal.ir/gold-currency/usdollar/", "enabled": true, "channel": "website", "price_kind": "current", "unit": "rial", "priority": 20, "weight": 1, "poll_interval_seconds": 30, "extractors": [{"kind": "row_contains", "contains": ["دلار", "ریال"], "index": 0}, {"kind": "regex", "pattern": "<span class=\\\"text-surface-on-surface text-app-title-md[^\\\"]*direction-ltr\\\">([0-9,]+)</span>"}]},
-        {"code": "alanchand_usd_tehran_buy", "name": "alanchand - دلار تهران خرید", "url": "https://alanchand.com/en/currencies-price/usd", "enabled": true, "channel": "website", "price_kind": "buy", "unit": "rial", "priority": 40, "weight": 1, "poll_interval_seconds": 60, "extractors": [{"kind": "css", "selector": "body > main > section.container.mostPopularRate > div > div > div:nth-child(2) > div > div > div > div > span"}, {"kind": "row_contains", "contains": ["Buy rate for USD to IRR"], "index": 0}]},
-        {"code": "alanchand_usd_tehran_sell", "name": "alanchand - دلار تهران فروش", "url": "https://alanchand.com/en/currencies-price/usd", "enabled": true, "channel": "website", "price_kind": "sell", "unit": "rial", "priority": 40, "weight": 1, "poll_interval_seconds": 60, "extractors": [{"kind": "css", "selector": "body > main > section.container.mostPopularRate > div > div > div:nth-child(1) > div > div > div > div > span.fw-bold.text-success.fs-5"}, {"kind": "row_contains", "contains": ["Sell rate for USD to IRR"], "index": 0}]},
-        {"code": "bonbast_usd_tehran_current", "name": "Bonbast - دلار تهران فروش/current", "url": "https://www.bonbast.com/", "enabled": true, "channel": "website", "price_kind": "current", "unit": "toman", "priority": 30, "weight": 1, "poll_interval_seconds": 30, "extractors": [{"kind": "css", "selector": "#usd1"}]},
-        {"code": "bonbast_usd_tehran_buy", "name": "Bonbast - دلار تهران خرید", "url": "https://www.bonbast.com/", "enabled": true, "channel": "website", "price_kind": "buy", "unit": "toman", "priority": 30, "weight": 1, "poll_interval_seconds": 30, "extractors": [{"kind": "css", "selector": "#usd2"}]},
-        {"code": "tabdeal_usd_tehran_current", "name": "Tabdeal - دلار تهران", "url": "https://tabdeal.org/live/currency", "enabled": true, "channel": "website", "price_kind": "current", "unit": "toman", "priority": 50, "weight": 1, "poll_interval_seconds": 60, "extractors": [{"kind": "row_contains", "contains": ["دلار", "تومان"], "index": 0}, {"kind": "regex", "pattern": "دلار[\\s\\S]{0,250}?تومان[\\s\\S]{0,80}?([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"}]}
+        {
+          "code": "tgju_usd_tehran_current",
+          "name": "TGJU - دلار تهران",
+          "url": "https://www.tgju.org/profile/price_dollar_rl",
+          "enabled": true,
+          "channel": "website",
+          "price_kind": "current",
+          "unit": "rial",
+          "priority": 10,
+          "weight": 1,
+          "poll_interval_seconds": 30,
+          "extractors": [
+            {"kind": "css", "selector": "#main > div.stocks-profile > div.fs-row.bootstrap-fix.widgets.full-w-set.profile-social-share-box > div.row.tgju-widgets-row > div.tgju-widgets-block.col-md-12.col-lg-4.tgju-widgets-block-bottom-unset.overview-first-block > div > div:nth-child(2) > div > div.tables-default.normal > table > tbody > tr:nth-child(1) > td.text-left"},
+            {"kind": "regex", "pattern": "نرخ فعلی[:：\\s]*([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"},
+            {"kind": "regex", "pattern": "<td[^>]*class=\\\"text-left\\\"[^>]*>([0-9,۰-۹٠-٩]+)</td>"}
+          ]
+        },
+        {
+          "code": "signal_usd_tehran_current",
+          "name": "signal - دلار تهران",
+          "url": "https://isignal.ir/gold-currency/usdollar/",
+          "enabled": true,
+          "channel": "website",
+          "price_kind": "current",
+          "unit": "rial",
+          "priority": 20,
+          "weight": 1,
+          "poll_interval_seconds": 30,
+          "extractors": [
+            {"kind": "row_contains", "contains": ["دلار", "ریال"], "index": 0},
+            {"kind": "regex", "pattern": "<span class=\\\"text-surface-on-surface text-app-title-md[^\\\"]*direction-ltr\\\">([0-9,]+)</span>"}
+          ]
+        },
+        {
+          "code": "alanchand_usd_tehran_buy",
+          "name": "alanchand - دلار تهران خرید",
+          "url": "https://alanchand.com/en/currencies-price/usd",
+          "enabled": true,
+          "channel": "website",
+          "price_kind": "buy",
+          "unit": "rial",
+          "priority": 40,
+          "weight": 1,
+          "poll_interval_seconds": 60,
+          "extractors": [
+            {"kind": "css", "selector": "body > main > section.container.mostPopularRate > div > div > div:nth-child(2) > div > div > div > div > span"},
+            {"kind": "row_contains", "contains": ["Buy rate for USD to IRR"], "index": 0}
+          ]
+        },
+        {
+          "code": "alanchand_usd_tehran_sell",
+          "name": "alanchand - دلار تهران فروش",
+          "url": "https://alanchand.com/en/currencies-price/usd",
+          "enabled": true,
+          "channel": "website",
+          "price_kind": "sell",
+          "unit": "rial",
+          "priority": 40,
+          "weight": 1,
+          "poll_interval_seconds": 60,
+          "extractors": [
+            {"kind": "css", "selector": "body > main > section.container.mostPopularRate > div > div > div:nth-child(1) > div > div > div > div > span.fw-bold.text-success.fs-5"},
+            {"kind": "row_contains", "contains": ["Sell rate for USD to IRR"], "index": 0}
+          ]
+        },
+        {
+          "code": "bonbast_usd_tehran_current",
+          "name": "Bonbast - دلار تهران فروش/current",
+          "url": "https://www.bonbast.com/",
+          "enabled": true,
+          "channel": "website",
+          "price_kind": "current",
+          "unit": "toman",
+          "priority": 30,
+          "weight": 1,
+          "poll_interval_seconds": 30,
+          "extractors": [{"kind": "css", "selector": "#usd1"}]
+        },
+        {
+          "code": "bonbast_usd_tehran_buy",
+          "name": "Bonbast - دلار تهران خرید",
+          "url": "https://www.bonbast.com/",
+          "enabled": true,
+          "channel": "website",
+          "price_kind": "buy",
+          "unit": "toman",
+          "priority": 30,
+          "weight": 1,
+          "poll_interval_seconds": 30,
+          "extractors": [{"kind": "css", "selector": "#usd2"}]
+        },
+        {
+          "code": "tabdeal_usd_tehran_current",
+          "name": "Tabdeal - دلار تهران",
+          "url": "https://tabdeal.org/live/currency",
+          "enabled": true,
+          "channel": "website",
+          "price_kind": "current",
+          "unit": "toman",
+          "priority": 50,
+          "weight": 1,
+          "poll_interval_seconds": 60,
+          "extractors": [
+            {"kind": "row_contains", "contains": ["دلار", "تومان"], "index": 0},
+            {"kind": "regex", "pattern": "دلار[\\s\\S]{0,250}?تومان[\\s\\S]{0,80}?([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"}
+          ]
+        }
       ]
     },
     {
       "code": "usd_sulaymaniyah",
+      "external_code": "usd-sulaymaniyah",
       "name": "دلار سلیمانیه",
       "category": "currency",
       "unit": "toman",
       "sources": [
-        {"code": "arzxe_usd_sulaymaniyah_buy", "name": "ARZXE - دلار سلیمانیه خرید", "url": "https://arzxe.com/currencies/usd-sulaymaniyah", "enabled": true, "channel": "website", "price_kind": "buy", "unit": "toman", "priority": 10, "weight": 1, "poll_interval_seconds": 30, "notes": "HTML around price says تومان, so no rial-to-toman conversion is applied.", "extractors": [{"kind": "css", "selector": "body > main > div.container > div:nth-child(2) > div:nth-child(2) > div:nth-child(2) > div:nth-child(2)"}, {"kind": "row_contains", "contains": ["قیمت خرید", "تومان"], "index": 0}, {"kind": "regex", "pattern": "قیمت خرید[\\s\\S]{0,160}?([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)[\\s\\S]{0,80}?تومان"}]}
+        {
+          "code": "arzxe_usd_sulaymaniyah_buy",
+          "name": "ARZXE - دلار سلیمانیه خرید",
+          "url": "https://arzxe.com/currencies/usd-sulaymaniyah",
+          "enabled": true,
+          "channel": "website",
+          "price_kind": "buy",
+          "unit": "toman",
+          "priority": 10,
+          "weight": 1,
+          "poll_interval_seconds": 30,
+          "notes": "HTML around price says تومان, so no rial-to-toman conversion is applied.",
+          "extractors": [
+            {"kind": "css", "selector": "body > main > div.container > div:nth-child(2) > div:nth-child(2) > div:nth-child(2) > div:nth-child(2)"},
+            {"kind": "row_contains", "contains": ["قیمت خرید", "تومان"], "index": 0},
+            {"kind": "regex", "pattern": "قیمت خرید[\\s\\S]{0,160}?([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)[\\s\\S]{0,80}?تومان"}
+          ]
+        },
+        {
+          "code": "arzxe_usd_sulaymaniyah_sell",
+          "name": "ARZXE - دلار سلیمانیه فروش",
+          "url": "https://arzxe.com/currencies/usd-sulaymaniyah",
+          "enabled": true,
+          "channel": "website",
+          "price_kind": "sell",
+          "unit": "toman",
+          "priority": 10,
+          "weight": 1,
+          "poll_interval_seconds": 30,
+          "extractors": [
+            {"kind": "css", "selector": "body > main > div.container > div:nth-child(2) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2)"},
+            {"kind": "row_contains", "contains": ["قیمت فروش", "تومان"], "index": 0},
+            {"kind": "regex", "pattern": "قیمت فروش[\\s\\S]{0,160}?([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)[\\s\\S]{0,80}?تومان"}
+          ]
+        }
       ]
     },
-    {"code": "aed_tehran", "name": "درهم امارات", "category": "currency", "unit": "toman", "sources": [{"code": "tgju_aed_current", "name": "TGJU - درهم امارات", "url": "https://www.tgju.org/profile/price_aed", "enabled": true, "channel": "website", "price_kind": "current", "unit": "rial", "priority": 10, "weight": 1, "poll_interval_seconds": 60, "extractors": [{"kind": "regex", "pattern": "نرخ فعلی[:：\\s]*([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"}]}]},
-    {"code": "eur_tehran", "name": "یورو", "category": "currency", "unit": "toman", "sources": [{"code": "tgju_eur_current", "name": "TGJU - یورو", "url": "https://www.tgju.org/profile/price_eur", "enabled": true, "channel": "website", "price_kind": "current", "unit": "rial", "priority": 10, "weight": 1, "poll_interval_seconds": 60, "extractors": [{"kind": "regex", "pattern": "نرخ فعلی[:：\\s]*([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"}]}]}
+    {
+      "code": "afghan_usd",
+      "name": "دلار هرات",
+      "category": "currency",
+      "unit": "toman",
+      "sources": [
+        {
+          "code": "navasan_afghan_usd_buy",
+          "name": "Navasan - دلار هرات خرید",
+          "url": "https://www.navasan.net/dayRates.php?item=harat_naghdi_buy",
+          "enabled": true,
+          "channel": "website",
+          "price_kind": "buy",
+          "unit": "toman",
+          "priority": 10,
+          "weight": 1,
+          "poll_interval_seconds": 30,
+          "extractors": [
+            {"kind": "css", "selector": "#ajax-content > div:nth-child(1) > div > div > div:nth-child(2) > div.idesc.lastrate.neg"},
+            {"kind": "row_contains", "contains": ["آخرین نرخ"], "index": 0},
+            {"kind": "regex", "pattern": "آخرین نرخ[\\s\\S]{0,120}?([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"}
+          ]
+        }
+      ]
+    },
+    {
+      "code": "aed_tehran",
+      "name": "درهم امارات",
+      "category": "currency",
+      "unit": "toman",
+      "sources": [
+        {
+          "code": "tgju_aed_current",
+          "name": "TGJU - درهم امارات",
+          "url": "https://www.tgju.org/profile/price_aed",
+          "enabled": true,
+          "channel": "website",
+          "price_kind": "current",
+          "unit": "rial",
+          "priority": 10,
+          "weight": 1,
+          "poll_interval_seconds": 60,
+          "extractors": [{"kind": "regex", "pattern": "نرخ فعلی[:：\\s]*([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"}]
+        }
+      ]
+    },
+    {
+      "code": "eur_tehran",
+      "name": "یورو",
+      "category": "currency",
+      "unit": "toman",
+      "sources": [
+        {
+          "code": "tgju_eur_current",
+          "name": "TGJU - یورو",
+          "url": "https://www.tgju.org/profile/price_eur",
+          "enabled": true,
+          "channel": "website",
+          "price_kind": "current",
+          "unit": "rial",
+          "priority": 10,
+          "weight": 1,
+          "poll_interval_seconds": 60,
+          "extractors": [{"kind": "regex", "pattern": "نرخ فعلی[:：\\s]*([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)"}]
+        }
+      ]
+    }
   ]
 }
