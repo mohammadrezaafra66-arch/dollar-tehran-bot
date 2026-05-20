@@ -75,7 +75,10 @@ def clean_number(text: str) -> int:
     if text is None:
         raise ValueError("empty number")
     s = str(text).translate(FA_DIGITS)
-    s = s.replace(",", "").replace("،", "").replace(" ", "").replace("\u200c", "")
+    # Covers English comma, Persian comma, Arabic thousands separator, Arabic decimal separator,
+    # regular spaces, NBSP and ZWNJ. This is required for values like 1٬781٬000.
+    for ch in [",", "،", "٬", "٫", " ", "\u00a0", "\u200c"]:
+        s = s.replace(ch, "")
     m = re.search(r"-?\d+", s)
     if not m:
         raise ValueError(f"number not found in {text!r}")
@@ -146,7 +149,7 @@ def extract_by_step(html_text: str, step: dict) -> str:
         return m.group(1) if m.groups() else m.group(0)
     if kind == "row_contains":
         words = step.get("contains", [])
-        number_pattern = step.get("number_pattern", r"([0-9۰-۹٠-٩]{1,3}(?:[,،][0-9۰-۹٠-٩]{3})+)")
+        number_pattern = step.get("number_pattern", r"([0-9۰-۹٠-٩]{1,3}(?:[,،٬][0-9۰-۹٠-٩]{3})+)")
         index = int(step.get("index", 0))
         for row in soup.find_all(["tr", "div", "article", "section"]):
             txt = row.get_text(" ", strip=True)
