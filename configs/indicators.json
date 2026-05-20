@@ -13,24 +13,9 @@
     "dashboard_poll_interval_seconds": 15,
     "target_capacity_note": "Designed for 50 indicators x 5 sources = 250 sources"
   },
-  "dashboard": {
-    "stream_refresh_seconds": 3,
-    "live_without_manual_refresh": true
-  },
-  "quality": {
-    "aggregation_method": "median",
-    "freshness_window_seconds": 900,
-    "compare_window_seconds": 1200,
-    "min_healthy_sources_per_indicator": 2,
-    "outlier_detection_enabled": false,
-    "outlier_max_deviation_percent": 3
-  },
-  "sync": {
-    "enabled": false,
-    "api_url": "${AFRA_API_URL}",
-    "api_token": "${AFRA_API_TOKEN}",
-    "timeout_seconds": 30
-  },
+  "dashboard": {"stream_refresh_seconds": 3, "live_without_manual_refresh": true},
+  "quality": {"aggregation_method": "median", "freshness_window_seconds": 900, "compare_window_seconds": 1200, "min_healthy_sources_per_indicator": 2, "outlier_detection_enabled": false, "outlier_max_deviation_percent": 3},
+  "sync": {"enabled": false, "api_url": "${AFRA_API_URL}", "api_token": "${AFRA_API_TOKEN}", "timeout_seconds": 30},
   "indicators": [
     {
       "code": "usd_tehran",
@@ -84,7 +69,10 @@
       "name":"یورو",
       "category":"currency",
       "unit":"toman",
-      "sources":[{"code":"tgju_eur_current","name":"TGJU - یورو current","url":"https://www.tgju.org/profile/price_eur","enabled":true,"channel":"website","price_kind":"current","unit":"rial","priority":10,"weight":1,"poll_interval_seconds":60,"extractors":[{"kind":"css","selector":"#main > div.stocks-profile > div.fs-row.bootstrap-fix.widgets.full-w-set.profile-social-share-box > div.row.tgju-widgets-row > div.tgju-widgets-block.col-md-12.col-lg-4.tgju-widgets-block-bottom-unset.overview-first-block > div > div:nth-child(2) > div > div.tables-default.normal > table > tbody > tr:nth-child(1) > td.text-left"},{"kind":"row_contains","contains":["نرخ فعلی"],"index":0},{"kind":"regex","pattern":"نرخ فعلی[\\s\\S]{0,120}?([0-9۰-۹٠-٩]{1,3}(?:[,،٬][0-9۰-۹٠-٩]{3})+)"}]}]
+      "sources":[
+        {"code":"tgju_eur_current","name":"TGJU - یورو current","url":"https://www.tgju.org/profile/price_eur","enabled":true,"channel":"website","price_kind":"current","unit":"rial","priority":10,"weight":1,"poll_interval_seconds":60,"extractors":[{"kind":"css","selector":"#main > div.stocks-profile > div.fs-row.bootstrap-fix.widgets.full-w-set.profile-social-share-box > div.row.tgju-widgets-row > div.tgju-widgets-block.col-md-12.col-lg-4.tgju-widgets-block-bottom-unset.overview-first-block > div > div:nth-child(2) > div > div.tables-default.normal > table > tbody > tr:nth-child(1) > td.text-left"},{"kind":"row_contains","contains":["نرخ فعلی"],"index":0},{"kind":"regex","pattern":"نرخ فعلی[\\s\\S]{0,120}?([0-9۰-۹٠-٩]{1,3}(?:[,،٬][0-9۰-۹٠-٩]{3})+)"}]},
+        {"code":"alanchand_eur_buy","name":"Alanchand - یورو خرید","url":"https://alanchand.com/currencies-price/eur","enabled":true,"channel":"website","price_kind":"buy","unit":"toman","priority":30,"weight":1,"poll_interval_seconds":60,"extractors":[{"kind":"css","selector":"body > main > section.container.mostPopularRate > div > div > div:nth-child(2) > div > div > div > div > span"},{"kind":"row_contains","contains":["قیمت خرید یورو"],"index":0},{"kind":"regex","pattern":"قیمت خرید یورو[\\s\\S]{0,500}?<span[^>]*>([0-9۰-۹٠-٩,،٬]+)</span>"}]}
+      ]
     }
   ]
 }
