@@ -5,15 +5,16 @@ import json
 import time
 
 from .core import jalali_stamp, load_config, post_to_afra, run_once
-from .source_check import check_sources, save_report
+from .source_check import check_sources, enable_successful_pending, save_report
 
 
 def main():
     parser = argparse.ArgumentParser("afra-market-data")
-    parser.add_argument("command", nargs="?", default="run-once", choices=["run-once", "run-loop", "post", "check-sources", "check-pending"])
+    parser.add_argument("command", nargs="?", default="run-once", choices=["run-once", "run-loop", "post", "check-sources", "check-pending", "enable-pending"])
     parser.add_argument("--config", default="configs/indicators.json")
     parser.add_argument("--indicator", default=None)
     parser.add_argument("--source", default=None)
+    parser.add_argument("--min-value", type=int, default=1)
     args = parser.parse_args()
 
     if args.command == "run-once":
@@ -41,6 +42,16 @@ def main():
         ok_count = sum(1 for row in rows if row.get("ok"))
         bad_count = len(rows) - ok_count
         print(json.dumps({"checked": len(rows), "ok": ok_count, "bad": bad_count, "report": report_path}, ensure_ascii=False, indent=2))
+        return
+
+    if args.command == "enable-pending":
+        result = enable_successful_pending(
+            config_path=args.config,
+            indicator_code=args.indicator,
+            source_code=args.source,
+            min_value=args.min_value,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
         return
 
     cfg = load_config(args.config)
