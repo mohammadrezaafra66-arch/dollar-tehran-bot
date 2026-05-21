@@ -5,12 +5,15 @@ import json
 import time
 
 from .core import jalali_stamp, load_config, post_to_afra, run_once
+from .source_check import check_sources, save_report
 
 
 def main():
     parser = argparse.ArgumentParser("afra-market-data")
-    parser.add_argument("command", nargs="?", default="run-once", choices=["run-once", "run-loop", "post"])
+    parser.add_argument("command", nargs="?", default="run-once", choices=["run-once", "run-loop", "post", "check-sources", "check-pending"])
     parser.add_argument("--config", default="configs/indicators.json")
+    parser.add_argument("--indicator", default=None)
+    parser.add_argument("--source", default=None)
     args = parser.parse_args()
 
     if args.command == "run-once":
@@ -23,6 +26,21 @@ def main():
         payload = run_once(args.config)
         ok, msg = post_to_afra(payload, cfg)
         print(("OK: " if ok else "ERROR: ") + msg)
+        return
+
+    if args.command in ("check-sources", "check-pending"):
+        rows = check_sources(
+            config_path=args.config,
+            include_disabled=True,
+            indicator_code=args.indicator,
+            source_code=args.source,
+        )
+        if args.command == "check-pending":
+            rows = [row for row in rows if not row.get("enabled")]
+        report_path = save_report(rows)
+        ok_count = sum(1 for row in rows if row.get("ok"))
+        bad_count = len(rows) - ok_count
+        print(json.dumps({"checked": len(rows), "ok": ok_count, "bad": bad_count, "report": report_path}, ensure_ascii=False, indent=2))
         return
 
     cfg = load_config(args.config)
