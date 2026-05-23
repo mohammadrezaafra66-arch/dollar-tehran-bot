@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Afra Divar Bot - Local Runtime Demo</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111c33;
+      --panel-2: #17233f;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+      --info: #38bdf8;
+      --line: rgba(255,255,255,.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Tahoma, Arial, sans-serif;
+      background: radial-gradient(circle at top left, #1e3a8a 0, transparent 30%), var(--bg);
+      color: var(--text);
+    }
+    .layout { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    aside { border-left: 1px solid var(--line); padding: 24px; background: rgba(15, 23, 42, .72); }
+    .brand { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+    .sub { color: var(--muted); font-size: 12px; margin-bottom: 28px; }
+    nav a { display: block; padding: 12px 14px; color: var(--text); text-decoration: none; border-radius: 12px; margin-bottom: 8px; background: rgba(255,255,255,.03); }
+    nav a.active { background: rgba(56,189,248,.16); color: #bae6fd; }
+    main { padding: 28px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; gap: 16px; }
+    h1 { margin: 0; font-size: 24px; }
+    .badge { padding: 8px 12px; border-radius: 999px; background: rgba(34,197,94,.16); color: #bbf7d0; font-size: 13px; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+    .card { background: linear-gradient(180deg, var(--panel), var(--panel-2)); border: 1px solid var(--line); border-radius: 18px; padding: 18px; box-shadow: 0 12px 30px rgba(0,0,0,.2); }
+    .label { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+    .value { font-size: 28px; font-weight: 800; }
+    .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); } .info { color: var(--info); }
+    .two { display: grid; grid-template-columns: 1.3fr .7fr; gap: 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: right; }
+    th { color: var(--muted); font-weight: 500; }
+    .pill { padding: 5px 9px; border-radius: 999px; font-size: 12px; display: inline-block; }
+    .pill.ok { background: rgba(34,197,94,.13); }
+    .pill.warn { background: rgba(245,158,11,.13); }
+    .pill.bad { background: rgba(239,68,68,.13); }
+    .log { font-family: Consolas, monospace; direction: ltr; text-align: left; background: rgba(0,0,0,.22); padding: 12px; border-radius: 12px; color: #cbd5e1; margin-bottom: 8px; font-size: 12px; overflow: auto; }
+    .bar { height: 8px; background: rgba(255,255,255,.08); border-radius: 999px; overflow: hidden; margin-top: 10px; }
+    .bar > span { display:block; height:100%; background: var(--info); width: 72%; }
+    @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } aside { display:none; } .grid { grid-template-columns: repeat(2,1fr); } .two { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside>
+      <div class="brand">Afra Automation</div>
+      <div class="sub">Divar Bot Local Runtime Demo</div>
+      <nav>
+        <a class="active" href="#">داشبورد Runtime</a>
+        <a href="#">Queue & Jobs</a>
+        <a href="#">Pipeline Diagnostics</a>
+        <a href="#">Config Governance</a>
+        <a href="#">Logs</a>
+      </nav>
+    </aside>
+
+    <main>
+      <div class="topbar">
+        <div>
+          <h1>دموی لوکال ربات دیوار</h1>
+          <div class="sub">Instance: worker-1 · Environment: local-demo · Trace Mode: enabled</div>
+        </div>
+        <div class="badge">● Healthy / Ready</div>
+      </div>
+
+      <section class="grid">
+        <div class="card"><div class="label">Jobs Processed</div><div class="value ok">1,284</div></div>
+        <div class="card"><div class="label">Queue Depth</div><div class="value info">42</div></div>
+        <div class="card"><div class="label">Failed Records</div><div class="value warn">17</div></div>
+        <div class="card"><div class="label">Memory Used</div><div class="value">58%</div><div class="bar"><span></span></div></div>
+      </section>
+
+      <section class="two">
+        <div class="card">
+          <div class="label">Pipeline Status</div>
+          <table>
+            <thead><tr><th>Stage</th><th>Status</th><th>Processed</th><th>Failed</th><th>Last Error</th></tr></thead>
+            <tbody>
+              <tr><td>queue_claim</td><td><span class="pill ok">OK</span></td><td>1,284</td><td>0</td><td>-</td></tr>
+              <tr><td>divar_extraction</td><td><span class="pill warn">Degraded</span></td><td>814</td><td>11</td><td>TimeoutError</td></tr>
+              <tr><td>normalization</td><td><span class="pill ok">OK</span></td><td>803</td><td>2</td><td>missing_required_fields</td></tr>
+              <tr><td>save_results</td><td><span class="pill ok">OK</span></td><td>801</td><td>0</td><td>-</td></tr>
+              <tr><td>export_excel</td><td><span class="pill bad">Attention</span></td><td>801</td><td>4</td><td>file_locked</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="label">آخرین هشدارها</div>
+          <div class="log">{"level":"warning","event":"memory_pressure_detected","worker_id":"w-2","available_mb":241}</div>
+          <div class="log">{"level":"error","event":"invalid_job_payload","job_id":"j-889","missing_fields":["url"]}</div>
+          <div class="log">{"level":"warning","event":"pipeline_stage_failure","stage":"export_excel","records_impacted":4}</div>
+          <div class="log">{"level":"info","event":"runtime_decision","decision":"throttle","source":"config"}</div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
