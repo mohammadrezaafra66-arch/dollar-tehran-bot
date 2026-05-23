@@ -1,0 +1,26 @@
+environment: development
+
+queue:
+  workers: 2
+  retry_limit: 3
+
+browser:
+  headless: true
+  slow_mo: 250
+
+speed_profiles:
+  safe:
+    min_delay: 20
+    max_delay: 60
+
+  normal:
+    min_delay: 5
+    max_delay: 12
+
+  test:
+    min_delay: 0
+    max_delay: 1
+
+plugins:
+  divar:
+    enabled: true
