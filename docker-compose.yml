@@ -1,0 +1,19 @@
+version: '3.9'
+
+services:
+  divar-bot:
+    build: .
+    restart: unless-stopped
+    environment:
+      DIVAR_BOT_INSTANCE_ID: worker-1
+      DIVAR_BOT_DATABASE_PATH: /app/data/worker-1.db
+      DIVAR_BOT_MAX_WORKERS: 2
+      DIVAR_BOT_DB_TIMEOUT_SECONDS: 30
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
