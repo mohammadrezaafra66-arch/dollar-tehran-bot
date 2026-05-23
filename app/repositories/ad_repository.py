@@ -15,3 +15,13 @@ class AdRepository:
                     ad_data.get('source_url')
                 )
             )
+
+    def find_by_source_url(self, source_url):
+        with self.db.connection() as conn:
+            cursor = conn.execute(
+                'SELECT * FROM ads WHERE source_url = ? LIMIT 1',
+                (source_url,)
+            )
+
+            row = cursor.fetchone()
+            return dict(row) if row else None
