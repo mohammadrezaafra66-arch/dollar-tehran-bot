@@ -4,15 +4,18 @@ from contextlib import contextmanager
 
 
 class SQLiteManager:
-    def __init__(self, db_path='data/afra.db'):
-        self.db_path = db_path
+    def __init__(self, db_path=None, timeout_seconds=None):
+        self.db_path = db_path or os.getenv('DIVAR_BOT_DATABASE_PATH', 'data/afra.db')
+        self.timeout_seconds = timeout_seconds or int(os.getenv('DIVAR_BOT_DB_TIMEOUT_SECONDS', '30'))
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self.initialize()
 
     @contextmanager
     def connection(self):
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=self.timeout_seconds)
         conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA journal_mode=WAL')
+        conn.execute('PRAGMA busy_timeout = 30000')
         try:
             yield conn
             conn.commit()
@@ -101,6 +104,7 @@ class SQLiteManager:
                 )
             ''')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_jobs_status_priority ON jobs(status, priority)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_jobs_lock ON jobs(status, locked_until)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_extraction_plugin ON extraction_results(plugin_name)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_ads_platform ON ads(platform)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_sellers_platform ON sellers(platform)')
