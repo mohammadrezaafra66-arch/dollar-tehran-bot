@@ -12,7 +12,7 @@ import os
 from typing import Dict, List
 
 import pandas as pd
-from openpyxl import Workbook, load_workbook
+from openpyxl import load_workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
@@ -77,7 +77,6 @@ def _style_worksheet(ws) -> None:
 
 
 def create_local_settings_if_missing() -> None:
-    """Create local_settings.xlsx with user-facing sheets if it does not exist."""
     if os.path.exists(LOCAL_SETTINGS_FILE):
         return
 
@@ -108,18 +107,7 @@ def write_local_usage_file() -> None:
         f.write(content)
 
 
-def sync_local_settings_to_bot_inputs() -> None:
-    """Read local_settings.xlsx and write existing bot input/management files."""
-    create_local_settings_if_missing()
-    write_local_usage_file()
-    Config.create_directories()
-
-    sheets = pd.read_excel(LOCAL_SETTINGS_FILE, sheet_name=None)
-    search_df = sheets.get("Search_Input", pd.DataFrame(DEFAULT_SEARCH_ROWS))
-    config_df = sheets.get("Run_Config", pd.DataFrame(DEFAULT_CONFIG_ROWS))
-    phases_df = sheets.get("Phases", pd.DataFrame(DEFAULT_PHASE_ROWS))
-
-    # Normalize input column aliases for QueryGenerator compatibility.
+def _normalize_search_input(search_df: pd.DataFrame) -> pd.DataFrame:
     rename_map = {
         "استان": "province",
         "شهر": "city",
@@ -131,7 +119,7 @@ def sync_local_settings_to_bot_inputs() -> None:
         "فعال": "active",
         "وضعیت": "active",
     }
-    search_df = search_df.rename(columns=rename_map)
+    search_df = search_df.rename(columns=rename_map).copy()
 
     required_cols = ["active", "province", "city", "keyword", "brand", "related_keywords", "category"]
     for col in required_cols:
@@ -139,7 +127,40 @@ def sync_local_settings_to_bot_inputs() -> None:
             search_df[col] = "" if col != "active" else 1
     search_df = search_df[required_cols]
 
-    # Ensure safe defaults for local execution.
+    search_df["active"] = pd.to_numeric(search_df["active"], errors="coerce").fillna(1).astype(int)
+    for col in ["province", "city", "keyword", "brand", "related_keywords", "category"]:
+        search_df[col] = search_df[col].fillna("").astype(str).replace("nan", "").str.strip()
+
+    return search_df
+
+
+def _to_legacy_input_columns(search_df: pd.DataFrame) -> pd.DataFrame:
+    """Create the Persian-column Excel expected by the current QueryGenerator."""
+    return pd.DataFrame({
+        "active": search_df["active"],
+        "استان": search_df["province"],
+        "شهر": search_df["city"],
+        "کلمه اصلی": search_df["keyword"],
+        "برند": search_df["brand"],
+        "کلمات مرتبط": search_df["related_keywords"],
+        "دسته بندی": search_df["category"],
+    })
+
+
+def sync_local_settings_to_bot_inputs() -> None:
+    """Read local_settings.xlsx and write existing bot input/management files."""
+    create_local_settings_if_missing()
+    write_local_usage_file()
+    Config.create_directories()
+
+    sheets = pd.read_excel(LOCAL_SETTINGS_FILE, sheet_name=None)
+    search_df = sheets.get("Search_Input", pd.DataFrame(DEFAULT_SEARCH_ROWS))
+    config_df = sheets.get("Run_Config", pd.DataFrame(DEFAULT_CONFIG_ROWS))
+    phases_df = sheets.get("Phases", pd.DataFrame(DEFAULT_PHASE_ROWS))
+
+    search_df = _normalize_search_input(search_df)
+    legacy_input_df = _to_legacy_input_columns(search_df)
+
     if "Setting" in config_df.columns and "Value" in config_df.columns:
         settings = dict(zip(config_df["Setting"].astype(str), config_df["Value"]))
         needed_defaults = {row["Setting"]: row for row in DEFAULT_CONFIG_ROWS}
@@ -149,13 +170,13 @@ def sync_local_settings_to_bot_inputs() -> None:
 
     os.makedirs(Config.INPUT_DIR, exist_ok=True)
     with pd.ExcelWriter(Config.QUERIES_FILE, engine="openpyxl") as writer:
-        search_df.to_excel(writer, sheet_name="Sheet1", index=False)
+        legacy_input_df.to_excel(writer, sheet_name="Sheet1", index=False)
+        search_df.to_excel(writer, sheet_name="Local_Normalized", index=False)
 
     with pd.ExcelWriter(Config.MANAGEMENT_FILE, engine="openpyxl") as writer:
         config_df.to_excel(writer, sheet_name="Config", index=False)
         phases_df.to_excel(writer, sheet_name="Phases", index=False)
 
-    # Reload config values from the newly synced local files.
     Config.load_from_excel()
     print(f"✅ Local settings synced: {LOCAL_SETTINGS_FILE}")
     print(f"📥 Input file: {Config.QUERIES_FILE}")
