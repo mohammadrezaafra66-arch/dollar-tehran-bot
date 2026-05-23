@@ -1,16 +1,16 @@
 {
   "portal": {
     "title": "مرکز مدیریت ربات‌های افرا کالا",
-    "subtitle": "صفحه ورود محلی برای مدیریت ربات‌ها، داشبوردها و سرویس‌های داخلی افرا کالا",
-    "version": "1.0.0"
+    "subtitle": "صفحه ورود محلی برای مدیریت ربات‌های استخراج نرخ، استخراج لید و سرویس‌های عملیاتی افرا کالا",
+    "version": "1.1.0"
   },
   "bots": [
     {
       "id": "market_data",
-      "name": "ربات شاخص‌های بازار",
-      "short_name": "شاخص‌های بازار",
-      "description": "استخراج زنده نرخ ارز، طلا، سکه و شاخص‌های مالی از منابع مختلف و آماده‌سازی خروجی API برای دستیار افرا کالا.",
-      "category": "market-intelligence",
+      "name": "ربات استخراج نرخ شاخص‌ها از منابع",
+      "short_name": "استخراج نرخ شاخص‌ها",
+      "description": "استخراج زنده نرخ ارز، طلا، سکه و شاخص‌های مالی از منابع مختلف؛ ذخیره در SQLite و نمایش در داشبورد زنده.",
+      "category": "market-data",
       "status": "active",
       "panel_url": "/bots/market-data",
       "api_url": "/api/live",
@@ -19,28 +19,28 @@
       "order": 10
     },
     {
-      "id": "accounting_assistant",
-      "name": "ربات دستیار حسابداری",
-      "short_name": "حسابداری",
-      "description": "جایگاه آماده برای ربات‌های تحلیل خرید، قیمت‌گذاری، سرمایه‌گذاری و کنترل ریسک مالی.",
-      "category": "finance",
+      "id": "google_maps_leads",
+      "name": "ربات استخراج لید از گوگل مپ",
+      "short_name": "لید گوگل مپ",
+      "description": "پنل آماده برای تعریف شهر، صنف، کلمات کلیدی، محدوده جغرافیایی و مدیریت خروجی لیدهای استخراج‌شده از Google Maps.",
+      "category": "lead-generation",
       "status": "planned",
-      "panel_url": "#",
+      "panel_url": "/bots/google-maps-leads",
       "api_url": "#",
-      "icon": "🧮",
+      "icon": "🗺️",
       "accent": "green",
       "order": 20
     },
     {
-      "id": "pricing_assistant",
-      "name": "ربات قیمت‌گذاری کالا",
-      "short_name": "قیمت‌گذاری",
-      "description": "جایگاه آماده برای اتصال فرمول‌های قیمت‌گذاری محصولات افرا کالا بر اساس نرخ‌های زنده بازار.",
-      "category": "pricing",
+      "id": "divar_leads",
+      "name": "ربات استخراج لید از دیوار",
+      "short_name": "لید دیوار",
+      "description": "پنل آماده برای تعریف شهر، دسته‌بندی، کلمات کلیدی، فیلترهای آگهی و مدیریت خروجی لیدهای استخراج‌شده از دیوار.",
+      "category": "lead-generation",
       "status": "planned",
-      "panel_url": "#",
+      "panel_url": "/bots/divar-leads",
       "api_url": "#",
-      "icon": "🏷️",
+      "icon": "🏠",
       "accent": "orange",
       "order": 30
     }
