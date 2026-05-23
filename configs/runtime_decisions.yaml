@@ -1,0 +1,14 @@
+retryable_errors:
+  - TimeoutError
+  - ConnectionError
+  - TemporaryNetworkError
+
+throttle_queue_depth: 1000
+
+max_records_per_batch: 100
+
+stage_timeouts:
+  extraction: 45
+  normalization: 20
+  save_results: 15
+  export_excel: 60
