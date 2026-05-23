@@ -2,3 +2,10 @@ requests==2.32.3
 beautifulsoup4==4.12.3
 fastapi==0.115.6
 uvicorn==0.32.1
+pydantic>=2.7.0
+PyYAML>=6.0.1
+pandas>=2.2.0
+openpyxl>=3.1.2
+playwright>=1.44.0
+python-dotenv>=1.0.1
+jdatetime>=5.0.0
