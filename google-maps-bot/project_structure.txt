@@ -1,0 +1,3515 @@
+﻿======================================================================
+📁 Google Maps Scraper - کاملترین نمایش ساختار
+======================================================================
+
+📁 ساختار پروژه:
+--------------------------------------------------
+📁 app/
+    📄 __init__.py
+    📄 api_mapper.py
+    📄 business_extractor.py
+    📄 config.py
+    📄 database.py
+    📄 excel_exporter.py
+    📄 main_orchestrator.py
+    📄 maps_collector.py
+    📄 output_model.py
+    📄 query_generator.py
+    📄 sync_to_afrakala.py
+    📄 sync_to_google_sheets.py
+    📄 sync_to_google_sheets_oauth.py
+    📄 utils.py
+    📄 website_crawler.py
+📁 data/
+    📁 checkpoints/
+📁 database/
+📁 input/
+📁 logs/
+📁 output/
+📁 screenshots/
+📁 utils/
+📄 add_columns.py
+📄 check_stats.py
+📄 create_simple_management.py
+📄 debug_db.py
+📄 run.py
+📄 show_structure.py
+
+
+📋 فایل‌های مهم خارج از پوشه app:
+--------------------------------------------------
+   ✅ run.py
+   ✅ requirements.txt
+   ✅ show_structure.py
+
+======================================================================
+📄 فایل‌های پایتون:
+======================================================================
+
+======================================================================
+📄 .\add_columns.py
+======================================================================
+   1 | # add_columns.py
+   2 | import sqlite3
+   3 | from app.config import Config
+   4 | 
+   5 | conn = sqlite3.connect(Config.DATABASE_PATH)
+   6 | cursor = conn.cursor()
+   7 | 
+   8 | # اضافه کردن last_seen_at
+   9 | try:
+  10 |     cursor.execute('ALTER TABLE businesses ADD COLUMN last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
+  11 |     print('✅ last_seen_at column added')
+  12 | except sqlite3.OperationalError as e:
+  13 |     if 'duplicate column name' in str(e):
+  14 |         print('⚠️ last_seen_at already exists')
+  15 |     else:
+  16 |         print(f'⚠️ Error: {e}')
+  17 | 
+  18 | # اضافه کردن data_source
+  19 | try:
+  20 |     cursor.execute('ALTER TABLE businesses ADD COLUMN data_source TEXT DEFAULT "google_maps"')
+  21 |     print('✅ data_source column added')
+  22 | except sqlite3.OperationalError as e:
+  23 |     if 'duplicate column name' in str(e):
+  24 |         print('⚠️ data_source already exists')
+  25 |     else:
+  26 |         print(f'⚠️ Error: {e}')
+  27 | 
+  28 | conn.commit()
+  29 | conn.close()
+  30 | print('✅ Done!')
+
+======================================================================
+📄 .\app\__init__.py
+======================================================================
+   1 | # app/__init__.py
+   2 | """
+   3 | Google Maps Scraper
+   4 | یک سیستم حرفه‌ای برای استخراج اطلاعات از گوگل مپ
+   5 | """
+   6 | 
+   7 | __version__ = "2.0.0"
+   8 | __author__ = "AfRa KaLa"
+   9 | 
+  10 | from app.config import Config
+  11 | from app.database import Database
+  12 | from app.utils import extract_phone, extract_website, extract_address, accept_cookies
+  13 | from app.maps_collector import collect_businesses
+  14 | from app.business_extractor import extract_businesses
+  15 | from app.excel_exporter import export_to_excel
+  16 | from app.main_orchestrator import Orchestrator
+  17 | 
+  18 | __all__ = [
+  19 |     'Config',
+  20 |     'Business',
+  21 |     'Query', 
+  22 |     'Checkpoint',
+  23 |     'Database',
+  24 |     'extract_phone',
+  25 |     'extract_website',
+  26 |     'extract_address',
+  27 |     'accept_cookies',
+  28 |     'MapsCollector',
+  29 |     'BusinessExtractor',
+  30 |     'ExcelExporter',
+  31 |     'QueryEngine',
+  32 |     'Orchestrator'
+  33 | ]
+
+======================================================================
+📄 .\app\api_mapper.py
+======================================================================
+   1 | # app/api_mapper.py - لایه تبدیل بین دیتابیس و API افراکالا
+   2 | from typing import List, Dict, Optional
+   3 | from app.database import Database
+   4 | from app.output_model import BusinessRecord
+   5 | import json
+   6 | 
+   7 | class ApiMapper:
+   8 |     """تبدیل داده‌های دیتابیس به فرمت API افراکالا"""
+   9 |     
+  10 |     def __init__(self):
+  11 |         self.db = Database()
+  12 |     
+  13 |     def get_all_business_records(self, limit: Optional[int] = None) -> List[BusinessRecord]:
+  14 |         """دریافت همه بیزینس‌ها به صورت BusinessRecord"""
+  15 |         with self.db._get_connection() as conn:
+  16 |             cursor = conn.cursor()
+  17 |             
+  18 |             query = '''
+  19 |                 SELECT 
+  20 |                     b.id,
+  21 |                     b.name,
+  22 |                     b.phone,
+  23 |                     b.website,
+  24 |                     b.address,
+  25 |                     b.city,
+  26 |                     b.province,
+  27 |                     b.rating,
+  28 |                     b.reviews_count,
+  29 |                     b.place_id,
+  30 |                     b.slug,
+  31 |                     gq.query_text,
+  32 |                     w.email,
+  33 |                     w.instagram,
+  34 |                     w.telegram,
+  35 |                     w.whatsapp,
+  36 |                     w.extra_phones,
+  37 |                     b.extracted_at
+  38 |                 FROM businesses b
+  39 |                 LEFT JOIN generated_queries gq ON gq.id = b.query_id
+  40 |                 LEFT JOIN website_extractions w ON w.business_id = b.id
+  41 |                 WHERE b.status = 'done'
+  42 |                 ORDER BY b.id
+  43 |             '''
+  44 |             
+  45 |             if limit:
+  46 |                 query += f' LIMIT {limit}'
+  47 |             
+  48 |             cursor.execute(query)
+  49 |             
+  50 |             records = []
+  51 |             for row in cursor.fetchall():
+  52 |                 # تفکیک شماره موبایل و ثابت
+  53 |                 phone_raw = row[2] or ""
+  54 |                 phone_mobile = phone_raw if phone_raw.startswith('09') else ""
+  55 |                 phone_landline = phone_raw if phone_raw.startswith('0') and not phone_raw.startswith('09') else ""
+  56 |                 
+  57 |                 record = BusinessRecord(
+  58 |                     business_id=row[0],
+  59 |                     name=row[1] or "",
+  60 |                     phone_landline=phone_landline,
+  61 |                     phone_mobile=phone_mobile,
+  62 |                     website=row[3] or "",
+  63 |                     address=row[4] or "",
+  64 |                     city=row[5] or "",
+  65 |                     province=row[6] or "",
+  66 |                     rating=row[7],
+  67 |                     reviews_count=row[8],
+  68 |                     place_id=row[9] or "",
+  69 |                     slug=row[10] or "",
+  70 |                     query_text=row[11] or "",
+  71 |                     email=row[12] or "",
+  72 |                     instagram=row[13] or "",
+  73 |                     telegram=row[14] or "",
+  74 |                     whatsapp=row[15] or "",
+  75 |                     extra_phones=row[16] or "",
+  76 |                     extraction_date=row[17] or ""
+  77 |                 )
+  78 |                 records.append(record)
+  79 |             
+  80 |             return records
+  81 |     
+  82 |     def to_afrakala_batch_payload(self, records: List[BusinessRecord]) -> Dict:
+  83 |         """تبدیل لیست BusinessRecord به payload دسته‌ای برای API افراکالا"""
+  84 |         return {
+  85 |             "total": len(records),
+  86 |             "export_date": __import__('datetime').datetime.now().isoformat(),
+  87 |             "businesses": [r.to_afrakala_payload() for r in records]
+  88 |         }
+  89 |     
+  90 |     def get_stats(self) -> Dict:
+  91 |         """آمار کیفیت داده‌ها"""
+  92 |         records = self.get_all_business_records()
+  93 |         high = sum(1 for r in records if r.quality_score == 'high')
+  94 |         medium = sum(1 for r in records if r.quality_score == 'medium')
+  95 |         low = sum(1 for r in records if r.quality_score == 'low')
+  96 |         
+  97 |         return {
+  98 |             "total": len(records),
+  99 |             "high_quality": high,
+ 100 |             "medium_quality": medium,
+ 101 |             "low_quality": low,
+ 102 |             "has_email": sum(1 for r in records if r.email),
+ 103 |             "has_social": sum(1 for r in records if r.instagram or r.telegram or r.whatsapp),
+ 104 |             "has_phone": sum(1 for r in records if r.phone_landline or r.phone_mobile)
+ 105 |         }
+ 106 |     
+ 107 |     def close(self):
+ 108 |         self.db.close()
+ 109 | 
+ 110 | 
+ 111 | # برای اجرای تست
+ 112 | if __name__ == "__main__":
+ 113 |     mapper = ApiMapper()
+ 114 |     
+ 115 |     # آمار کیفیت
+ 116 |     stats = mapper.get_stats()
+ 117 |     print("=" * 60)
+ 118 |     print("📊 Data Quality Report")
+ 119 |     print("=" * 60)
+ 120 |     for key, value in stats.items():
+ 121 |         print(f"   {key}: {value}")
+ 122 |     
+ 123 |     # نمونه payload
+ 124 |     records = mapper.get_all_business_records(limit=5)
+ 125 |     payload = mapper.to_afrakala_batch_payload(records)
+ 126 |     
+ 127 |     print("\n" + "=" * 60)
+ 128 |     print("📦 Sample API Payload (first 5 businesses)")
+ 129 |     print("=" * 60)
+ 130 |     print(json.dumps(payload, indent=2, ensure_ascii=False)[:2000] + "...")
+ 131 |     
+ 132 |     mapper.close()
+
+======================================================================
+📄 .\app\business_extractor.py
+======================================================================
+   1 | # app/business_extractor.py - نسخه به‌روز شده با Config
+   2 | from playwright.sync_api import sync_playwright
+   3 | import time
+   4 | import json
+   5 | import random
+   6 | from datetime import datetime
+   7 | import os
+   8 | from app.config import Config
+   9 | from app.utils import extract_phone, extract_website, extract_address, accept_cookies
+  10 | from app.database import Database
+  11 | 
+  12 | print("Database path:", Config.DATABASE_PATH)
+  13 | 
+  14 | def is_page_valid(page):
+  15 |     """بررسی اینکه صفحه واقعاً محتوای مفید دارد (با تشخیص قطع نت)"""
+  16 |     try:
+  17 |         # روش ۱: بررسی وجود جعبه جستجو
+  18 |         search_box = page.locator('[role="combobox"]').first
+  19 |         if search_box.count() > 0 and search_box.is_visible():
+  20 |             return True
+  21 |         
+  22 |         # روش ۲: بررسی وجود پنل اطلاعات
+  23 |         panel = page.locator('[role="main"]').first
+  24 |         if panel.count() > 0 and panel.is_visible():
+  25 |             return True
+  26 |         
+  27 |         # روش ۳: بررسی URL
+  28 |         current_url = page.url
+  29 |         if '/place/' not in current_url:
+  30 |             print(f"  ⚠️ Not on a business page")
+  31 |             return False
+  32 |         
+  33 |         # روش ۴: بررسی متن صفحه برای خطاهای قطع نت
+  34 |         content = page.content().lower()
+  35 |         
+  36 |         error_keywords = [
+  37 |             'err_name_not_resolved',
+  38 |             'err_connection_refused',
+  39 |             'err_connection_timed_out',
+  40 |             'err_internet_disconnected',
+  41 |             'unable to connect',
+  42 |             'no internet',
+  43 |             'this site can\'t be reached',
+  44 |             'dns_probe_finished_no_internet',
+  45 |         ]
+  46 |         
+  47 |         for keyword in error_keywords:
+  48 |             if keyword in content:
+  49 |                 print(f"  ⚠️ Network error detected: {keyword}")
+  50 |                 return False
+  51 |         
+  52 |         # روش ۵: بررسی حداقل محتوای مفید
+  53 |         if len(content) < 1000:
+  54 |             print(f"  ⚠️ Page too small: {len(content)} chars")
+  55 |             return False
+  56 |         
+  57 |         # روش ۶: بررسی وجود دکمه تلفن یا آدرس
+  58 |         has_phone_btn = page.locator('a[href^="tel:"]').count() > 0
+  59 |         has_address_btn = page.locator('button[data-item-id="address"]').count() > 0
+  60 |         
+  61 |         if not has_phone_btn and not has_address_btn:
+  62 |             print(f"  ⚠️ No phone or address button found")
+  63 |             return False
+  64 |         
+  65 |         return True
+  66 |         
+  67 |     except Exception as e:
+  68 |         print(f"  ⚠️ Error checking page validity: {e}")
+  69 |         return False
+  70 | 
+  71 | def detect_captcha(page):
+  72 |     try:
+  73 |         content = page.content().lower()
+  74 |         captcha_keywords = ['captcha', 'unusual traffic', 'verify you are human']
+  75 |         for keyword in captcha_keywords:
+  76 |             if keyword in content:
+  77 |                 return True
+  78 |         return False
+  79 |     except:
+  80 |         return False
+  81 | 
+  82 | def extract_businesses(
+  83 |     input_file=None,
+  84 |     output_file='output/phase4_result.json',
+  85 |     max_businesses=None,
+  86 |     use_profile=False,
+  87 |     user_data_dir=None,
+  88 |     profile_name=None
+  89 | ):
+  90 |     """
+  91 |     استخراج جزئیات بیزینس‌ها از گوگل مپ
+  92 |     
+  93 |     Args:
+  94 |         max_businesses: اگر None باشد از Config.MAX_BUSINESSES_TO_EXTRACT استفاده می‌کند
+  95 |     """
+  96 |     print("=" * 60)
+  97 |     print("📍 Extracting business details (Unlimited Loop with Retry)")
+  98 |     print("=" * 60)
+  99 |     
+ 100 |     # اگر max_businesses مشخص نشده، از Config بگیر
+ 101 |     if max_businesses is None:
+ 102 |         max_businesses = Config.MAX_BUSINESSES_TO_EXTRACT
+ 103 |         print(f"📋 Using max_businesses from Config: {max_businesses}")
+ 104 |     
+ 105 |     db = Database()
+ 106 |     stats = db.get_stats()
+ 107 |     print(f"📊 DB Stats BEFORE: Total={stats['total']}, Done={stats['done']}, Failed={stats['failed']}")
+ 108 |     
+ 109 |     round_number = 0
+ 110 |     total_processed = 0
+ 111 |     
+ 112 |     while True:
+ 113 |         round_number += 1
+ 114 |         print(f"\n{'='*40}")
+ 115 |         print(f"🔄 ROUND {round_number}: Fetching next batch")
+ 116 |         print(f"{'='*40}")
+ 117 |         
+ 118 |         # دریافت دسته بعدی (اولویت با failedها)
+ 119 |         businesses_to_process = db.get_next_business_for_processing(limit=max_businesses)
+ 120 |         
+ 121 |         if not businesses_to_process:
+ 122 |             print("✅ No more pending or retryable failed businesses")
+ 123 |             break
+ 124 |         
+ 125 |         print(f"📋 Processing {len(businesses_to_process)} businesses...")
+ 126 |         
+ 127 |         with sync_playwright() as p:
+ 128 |             # استفاده از تنظیمات Config
+ 129 |             browser = p.chromium.launch(
+ 130 |                 headless=Config.HEADLESS,
+ 131 |                 slow_mo=Config.SLOW_MO
+ 132 |             )
+ 133 |             page = browser.new_page()
+ 134 |             accept_cookies(page)
+ 135 |             
+ 136 |             for biz in businesses_to_process:
+ 137 |                 total_processed += 1
+ 138 |                 retry_info = f" (retry {biz.get('retry_count', 0)}/3)" if biz.get('retry_count', 0) > 0 else ""
+ 139 |                 print(f"\n🔍 [{total_processed}] {biz['name'][:50]}...{retry_info}")
+ 140 |                 
+ 141 |                 has_error = False
+ 142 |                 error_message = None
+ 143 |                 phone = website = address = ""
+ 144 |                 
+ 145 |                 try:
+ 146 |                     print(f"  🌐 Navigating to page...")
+ 147 |                     response = page.goto(biz['clean_href'], wait_until="domcontentloaded", timeout=Config.PAGE_TIMEOUT)
+ 148 |                     
+ 149 |                     if response and response.status >= 400:
+ 150 |                         has_error = True
+ 151 |                         error_message = f"HTTP {response.status}"
+ 152 |                     else:
+ 153 |                         print(f"  ✅ Page loaded, checking content...")
+ 154 |                         time.sleep(2)
+ 155 |                         
+ 156 |                         if not is_page_valid(page):
+ 157 |                             has_error = True
+ 158 |                             error_message = "Page loaded but no valid content (network issue?)"
+ 159 |                         elif detect_captcha(page):
+ 160 |                             print(f"  🤖 Captcha detected!")
+ 161 |                             page.screenshot(path=f"screenshots/captcha_{total_processed}.png")
+ 162 |                             has_error = True
+ 163 |                             error_message = 'CAPTCHA'
+ 164 |                         else:
+ 165 |                             phone = extract_phone(page)
+ 166 |                             website = extract_website(page)
+ 167 |                             address = extract_address(page)
+ 168 |                             
+ 169 |                             if phone:
+ 170 |                                 print(f"  📞 {phone}")
+ 171 |                             if website:
+ 172 |                                 print(f"  🌐 {website}")
+ 173 |                             
+ 174 |                 except Exception as e:
+ 175 |                     has_error = True
+ 176 |                     error_message = f"{type(e).__name__}: {str(e)[:100]}"
+ 177 |                     print(f"  ❌ Exception: {error_message}")
+ 178 |                 
+ 179 |                 if has_error:
+ 180 |                     db.mark_failed(biz['id'], error_message)
+ 181 |                     print(f"  📝 DB: marked FAILED (will retry later)")
+ 182 |                 else:
+ 183 |                     db.mark_success(biz['id'], phone, website, address)
+ 184 |                     print(f"  📝 DB: marked SUCCESS")
+ 185 |                 
+ 186 |                 # نمایش پیشرفت
+ 187 |                 stats = db.get_stats()
+ 188 |                 print(f"  📊 Progress: Done={stats['done']}, Failed={stats['failed']}, Pending={stats['pending']}")
+ 189 |                 
+ 190 |                 # استفاده از تأخیر از Config
+ 191 |                 min_delay, max_delay = Config.DELAY_BETWEEN_BUSINESSES
+ 192 |                 time.sleep(random.uniform(min_delay, max_delay))
+ 193 |             
+ 194 |             browser.close()
+ 195 |     
+ 196 |     # آمار نهایی
+ 197 |     stats = db.get_stats()
+ 198 |     print("\n" + "=" * 60)
+ 199 |     print("✅ ALL EXTRACTION COMPLETED!")
+ 200 |     print(f"📊 Final Stats: Total={stats['total']}, Done={stats['done']}, Failed={stats['failed']}")
+
+     ... (23 lines skipped) ...
+
+======================================================================
+📄 .\app\config.py
+======================================================================
+   1 | # app/config.py - اضافه کردن LOG_FILE و ERROR_LOG_FILE
+   2 | 
+   3 | import os
+   4 | import pandas as pd
+   5 | from dataclasses import dataclass, field
+   6 | from typing import Tuple, Optional
+   7 | 
+   8 | @dataclass
+   9 | class Config:
+  10 |     # ========== مسیرها ==========
+  11 |     BASE_DIR: str = os.path.dirname(os.path.dirname(__file__))
+  12 |     INPUT_DIR: str = os.path.join(BASE_DIR, 'input')
+  13 |     OUTPUT_DIR: str = os.path.join(BASE_DIR, 'output')
+  14 |     DATA_DIR: str = os.path.join(BASE_DIR, 'data')
+  15 |     LOGS_DIR: str = os.path.join(BASE_DIR, 'logs')
+  16 |     SCREENSHOTS_DIR: str = os.path.join(BASE_DIR, 'screenshots')
+  17 |     
+  18 |     # ========== فایل مدیریت ==========
+  19 |     MANAGEMENT_FILE: str = os.path.join(INPUT_DIR, 'google_maps_management.xlsx')
+  20 |     QUERIES_FILE: str = os.path.join(INPUT_DIR, 'google_maps_input.xlsx')
+  21 |     
+  22 |     # ========== فایل‌های دیتابیس ==========
+  23 |     DATABASE_PATH: str = os.path.join(DATA_DIR, 'google_maps.db')
+  24 |     CHECKPOINT_FILE: str = os.path.join(DATA_DIR, 'checkpoints', 'checkpoint.json')
+  25 |     
+  26 |     # ========== فایل‌های لاگ (اضافه کن) ==========
+  27 |     LOG_FILE: str = os.path.join(LOGS_DIR, 'app.log')
+  28 |     ERROR_LOG_FILE: str = os.path.join(LOGS_DIR, 'errors.log')
+  29 |     
+  30 |     # ========== تنظیمات پیش‌فرض ==========
+  31 |     MAX_SCROLLS: int = 15
+  32 |     MAX_BUSINESSES_PER_QUERY: int = 50
+  33 |     MAX_BUSINESSES_TO_EXTRACT: int = 50
+  34 |     MAX_WEBSITES_TO_CRAWL: int = 20
+  35 |     HEADLESS: bool = False
+  36 |     SLOW_MO: int = 500
+  37 |     WEBSITE_CRAWL_ENABLED: bool = True
+  38 |     EXTRACT_EMAILS: bool = True
+  39 |     EXTRACT_SOCIAL: bool = True
+  40 |     
+  41 |     # تأخیرها
+  42 |     DELAY_BETWEEN_BUSINESSES: Tuple[float, float] = (5.0, 10.0)
+  43 |     DELAY_BETWEEN_QUERIES: Tuple[float, float] = (30.0, 60.0)
+  44 |     DELAY_BETWEEN_SCROLLS: Tuple[float, float] = (3.0, 5.0)
+  45 |     
+  46 |     # ========== تنظیمات Chrome Profile ==========
+  47 |     USE_CHROME_PROFILE: bool = False
+  48 |     USER_DATA_DIR: str = r"C:\Users\Asus\AppData\Local\Google\Chrome\User Data"
+  49 |     PROFILE_NAME: str = "Default"
+  50 |     
+  51 |     # عمومی
+  52 |     MISTAKE_RATE: float = 0.02
+  53 |     HUMAN_LIKE_TYPING: bool = True
+  54 |     PAGE_TIMEOUT: int = 45000
+  55 |     CAPTCHA_API_KEY: str = ""
+  56 |     
+  57 |     @classmethod
+  58 |     def create_directories(cls):
+  59 |         """ایجاد پوشه‌های مورد نیاز"""
+  60 |         for dir_path in [
+  61 |             cls.INPUT_DIR, cls.OUTPUT_DIR, cls.DATA_DIR,
+  62 |             cls.LOGS_DIR, cls.SCREENSHOTS_DIR
+  63 |         ]:
+  64 |             os.makedirs(dir_path, exist_ok=True)
+  65 |         
+  66 |         # پوشه checkpoints داخل data
+  67 |         checkpoint_dir = os.path.join(cls.DATA_DIR, 'checkpoints')
+  68 |         os.makedirs(checkpoint_dir, exist_ok=True)
+  69 |     
+  70 |     @classmethod
+  71 |     def load_from_excel(cls):
+  72 |         """بارگذاری تنظیمات از فایل Excel مدیریت"""
+  73 |         if not os.path.exists(cls.MANAGEMENT_FILE):
+  74 |             print(f"⚠️ Management file not found: {cls.MANAGEMENT_FILE}")
+  75 |             print("   Using default settings")
+  76 |             cls.create_management_template()
+  77 |             return
+  78 |         
+  79 |         try:
+  80 |             df = pd.read_excel(cls.MANAGEMENT_FILE, sheet_name='Config')
+  81 |             settings = dict(zip(df['Setting'], df['Value']))
+  82 |             
+  83 |             if 'max_scrolls' in settings:
+  84 |                 cls.MAX_SCROLLS = int(settings['max_scrolls'])
+  85 |             if 'max_businesses_per_query' in settings:
+  86 |                 cls.MAX_BUSINESSES_PER_QUERY = int(settings['max_businesses_per_query'])
+  87 |             if 'max_businesses_to_extract' in settings:
+  88 |                 cls.MAX_BUSINESSES_TO_EXTRACT = int(settings['max_businesses_to_extract'])
+  89 |             if 'max_websites_to_crawl' in settings:
+  90 |                 cls.MAX_WEBSITES_TO_CRAWL = int(settings['max_websites_to_crawl'])
+  91 |             if 'headless' in settings:
+  92 |                 cls.HEADLESS = str(settings['headless']).upper() == 'TRUE'
+  93 |             if 'slow_mo' in settings:
+  94 |                 cls.SLOW_MO = int(settings['slow_mo'])
+  95 |             if 'website_crawl_enabled' in settings:
+  96 |                 cls.WEBSITE_CRAWL_ENABLED = str(settings['website_crawl_enabled']).upper() == 'TRUE'
+  97 |             
+  98 |             if 'delay_between_businesses' in settings:
+  99 |                 delay_range = str(settings['delay_between_businesses']).split('-')
+ 100 |                 if len(delay_range) == 2:
+ 101 |                     cls.DELAY_BETWEEN_BUSINESSES = (float(delay_range[0]), float(delay_range[1]))
+ 102 |             
+ 103 |             print("✅ Settings loaded from management Excel")
+ 104 |             
+ 105 |         except Exception as e:
+ 106 |             print(f"⚠️ Error loading management file: {e}")
+ 107 |             print("   Using default settings")
+ 108 |     
+ 109 |     @classmethod
+ 110 |     def create_management_template(cls):
+ 111 |         """ایجاد فایل مدیریت نمونه"""
+ 112 |         os.makedirs(cls.INPUT_DIR, exist_ok=True)
+ 113 |         
+ 114 |         config_data = {
+ 115 |             'Setting': [
+ 116 |                 'max_scrolls',
+ 117 |                 'max_businesses_per_query',
+ 118 |                 'max_businesses_to_extract',
+ 119 |                 'max_websites_to_crawl',
+ 120 |                 'headless',
+ 121 |                 'slow_mo',
+ 122 |                 'website_crawl_enabled',
+ 123 |                 'extract_emails',
+ 124 |                 'extract_social',
+ 125 |                 'delay_between_businesses',
+ 126 |                 'delay_between_queries'
+ 127 |             ],
+ 128 |             'Value': [
+ 129 |                 15, 50, 50, 20, 'FALSE', 500, 'TRUE', 'TRUE', 'TRUE', '5-10', '30-60'
+ 130 |             ],
+ 131 |             'Description': [
+ 132 |                 'تعداد اسکرول در maps_collector',
+ 133 |                 'حداکثر بیزینس در هر کوئری',
+ 134 |                 'حداکثر بیزینس برای استخراج جزئیات',
+ 135 |                 'حداکثر وبسایت برای کرال',
+ 136 |                 'حالت headless مرورگر',
+ 137 |                 'تأخیر بین اکشن‌ها (میلی‌ثانیه)',
+ 138 |                 'فعال/غیرفعال کردن کرالر وبسایت',
+ 139 |                 'استخراج ایمیل از وبسایت‌ها',
+ 140 |                 'استخراج شبکه‌های اجتماعی',
+ 141 |                 'تأخیر بین بیزینس‌ها (ثانیه)',
+ 142 |                 'تأخیر بین کوئری‌ها (ثانیه)'
+ 143 |             ]
+ 144 |         }
+ 145 |         
+ 146 |         df_config = pd.DataFrame(config_data)
+ 147 |         
+ 148 |         phases_data = {
+ 149 |             'Phase': ['Phase 1', 'Phase 2', 'Phase 3', 'Phase 4'],
+ 150 |             'Name': ['Query Generator', 'Maps Collector', 'Business Extractor', 'Website Crawler'],
+ 151 |             'Enabled': [True, True, True, True],
+ 152 |             'Description': [
+ 153 |                 'تولید کوئری‌ها از Excel',
+ 154 |                 'جمع‌آوری بیزینس‌ها از گوگل مپ',
+ 155 |                 'استخراج جزئیات از گوگل مپ',
+ 156 |                 'کرال کردن وبسایت‌ها'
+ 157 |             ]
+ 158 |         }
+ 159 |         
+ 160 |         df_phases = pd.DataFrame(phases_data)
+ 161 |         
+ 162 |         with pd.ExcelWriter(cls.MANAGEMENT_FILE, engine='openpyxl') as writer:
+ 163 |             df_config.to_excel(writer, sheet_name='Config', index=False)
+ 164 |             df_phases.to_excel(writer, sheet_name='Phases', index=False)
+ 165 |         
+ 166 |         print(f"✅ Created management template: {cls.MANAGEMENT_FILE}")
+ 167 |     
+ 168 |     @classmethod
+ 169 |     def is_phase_enabled(cls, phase_name: str) -> bool:
+ 170 |         """بررسی فعال بودن یک فاز"""
+ 171 |         if not os.path.exists(cls.MANAGEMENT_FILE):
+ 172 |             return True
+ 173 |         
+ 174 |         try:
+ 175 |             df = pd.read_excel(cls.MANAGEMENT_FILE, sheet_name='Phases')
+ 176 |             phase_row = df[df['Name'] == phase_name]
+ 177 |             if not phase_row.empty:
+ 178 |                 return bool(phase_row.iloc[0]['Enabled'])
+ 179 |         except:
+ 180 |             pass
+ 181 |         return True
+ 182 |     @classmethod
+ 183 |     def is_execution_allowed(cls) -> bool:
+ 184 |         """بررسی آیا در زمان فعلی مجاز به اجرا هستیم"""
+ 185 |         import jdatetime
+ 186 |         from datetime import datetime
+ 187 |         
+ 188 |         # خواندن از management.xlsx
+ 189 |         if not os.path.exists(cls.MANAGEMENT_FILE):
+ 190 |             return True  # اگر فایل نبود، اجازه بده
+ 191 |         
+ 192 |         try:
+ 193 |             import pandas as pd
+ 194 |             df = pd.read_excel(cls.MANAGEMENT_FILE, sheet_name='Config')
+ 195 |             settings = dict(zip(df['تنظیمات'], df['مقدار']))
+ 196 |             
+ 197 |             # ساعت شروع و پایان
+ 198 |             start_time = settings.get('🕐 ساعت شروع', '08:00')
+ 199 |             end_time = settings.get('🕐 ساعت پایان', '23:00')
+ 200 |             current_time = datetime.now().strftime('%H:%M')
+
+     ... (47 lines skipped) ...
+
+======================================================================
+📄 .\app\database.py
+======================================================================
+   1 | # app/database.py - نسخه کامل با متد add_website_extraction
+   2 | import sqlite3
+   3 | from datetime import datetime
+   4 | from typing import Optional, List, Dict
+   5 | from contextlib import contextmanager
+   6 | from app.config import Config
+   7 | import json
+   8 | 
+   9 | class Database:
+  10 |     def __init__(self, db_path: str = None):
+  11 |         print("📀 Database instance created")
+  12 |         if db_path is None:
+  13 |             db_path = Config.DATABASE_PATH
+  14 |         self.db_path = db_path
+  15 |         self._init_tables()
+  16 |     
+  17 |     @contextmanager
+  18 |     def _get_connection(self):
+  19 |         conn = sqlite3.connect(self.db_path)
+  20 |         conn.row_factory = sqlite3.Row
+  21 |         try:
+  22 |             yield conn
+  23 |             conn.commit()
+  24 |         except Exception as e:
+  25 |             conn.rollback()
+  26 |             raise e
+  27 |         finally:
+  28 |             conn.close()
+  29 |     
+  30 |     def _init_tables(self):
+  31 |         with self._get_connection() as conn:
+  32 |             cursor = conn.cursor()
+  33 |             
+  34 |             # جدول search_sources
+  35 |             cursor.execute('''
+  36 |                 CREATE TABLE IF NOT EXISTS search_sources (
+  37 |                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+  38 |                     city TEXT,
+  39 |                     province TEXT,
+  40 |                     keyword TEXT,
+  41 |                     brand TEXT,
+  42 |                     related_keywords TEXT,
+  43 |                     category TEXT,
+  44 |                     active BOOLEAN DEFAULT 1,
+  45 |                     priority INTEGER DEFAULT 0,
+  46 |                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  47 |                 )
+  48 |             ''')
+  49 |             
+  50 |             # جدول generated_queries
+  51 |             cursor.execute('''
+  52 |                 CREATE TABLE IF NOT EXISTS generated_queries (
+  53 |                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+  54 |                     source_id INTEGER,
+  55 |                     query_text TEXT UNIQUE,
+  56 |                     status TEXT DEFAULT 'pending',
+  57 |                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  58 |                     executed_at TIMESTAMP,
+  59 |                     FOREIGN KEY (source_id) REFERENCES search_sources(id)
+  60 |                 )
+  61 |             ''')
+  62 |             
+  63 |             # جدول businesses
+  64 |             cursor.execute('''
+  65 |                 CREATE TABLE IF NOT EXISTS businesses (
+  66 |                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+  67 |                     query_id INTEGER,
+  68 |                     name TEXT,
+  69 |                     slug TEXT UNIQUE,
+  70 |                     clean_href TEXT,
+  71 |                     phone TEXT,
+  72 |                     website TEXT,
+  73 |                     address TEXT,
+  74 |                     city TEXT,
+  75 |                     province TEXT,
+  76 |                     rating REAL,
+  77 |                     reviews_count INTEGER,
+  78 |                     hours TEXT,
+  79 |                     place_id TEXT,
+  80 |                     status TEXT DEFAULT 'pending',
+  81 |                     retry_count INTEGER DEFAULT 0,
+  82 |                     last_error TEXT,
+  83 |                     extracted_at TIMESTAMP,
+  84 |                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  85 |                 )
+  86 |             ''')
+  87 |             
+  88 |             # جدول website_extractions
+  89 |             cursor.execute('''
+  90 |     CREATE TABLE IF NOT EXISTS website_extractions (
+  91 |         id INTEGER PRIMARY KEY AUTOINCREMENT,
+  92 |         business_id INTEGER,
+  93 |         email TEXT,
+  94 |         instagram TEXT,
+  95 |         telegram TEXT,
+  96 |         whatsapp TEXT,
+  97 |         extra_phones TEXT,
+  98 |         contact_page_url TEXT,
+  99 |         about_page_url TEXT,
+ 100 |         crawl_status TEXT DEFAULT 'pending',
+ 101 |         crawl_error TEXT,
+ 102 |         crawled_at TIMESTAMP,
+ 103 |         FOREIGN KEY (business_id) REFERENCES businesses(id)
+ 104 |     )
+ 105 | ''')
+ 106 |             
+ 107 |             # ایندکس‌ها
+ 108 |             cursor.execute('CREATE INDEX IF NOT EXISTS idx_generated_queries_status ON generated_queries(status)')
+ 109 |             cursor.execute('CREATE INDEX IF NOT EXISTS idx_businesses_status ON businesses(status)')
+ 110 |             cursor.execute('CREATE INDEX IF NOT EXISTS idx_businesses_slug ON businesses(slug)')
+ 111 |     
+ 112 |     # ========== Search Sources ==========
+ 113 |     
+ 114 |     def add_search_source(self, data: Dict) -> int:
+ 115 |         with self._get_connection() as conn:
+ 116 |             cursor = conn.cursor()
+ 117 |             cursor.execute('''
+ 118 |                 INSERT INTO search_sources 
+ 119 |                 (city, province, keyword, brand, related_keywords, category, active, priority)
+ 120 |                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+ 121 |             ''', (
+ 122 |                 data.get('city'), data.get('province'), data.get('keyword'),
+ 123 |                 data.get('brand'), data.get('related_keywords'), data.get('category'),
+ 124 |                 data.get('active', 1), data.get('priority', 0)
+ 125 |             ))
+ 126 |             return cursor.lastrowid
+ 127 |     
+ 128 |     # ========== Generated Queries ==========
+ 129 |     
+ 130 |     def add_generated_query(self, source_id: int, query_text: str) -> int:
+ 131 |          """
+ 132 |          اضافه کردن query فقط در صورتی که قبلاً نبوده باشد.
+ 133 |          Returns: id موجود یا جدید
+ 134 |          """
+ 135 |          with self._get_connection() as conn:
+ 136 |              cursor = conn.cursor()
+ 137 |              # اول ببین وجود دارد؟
+ 138 |              cursor.execute('SELECT id FROM generated_queries WHERE query_text = ?', (query_text,))
+ 139 |              existing = cursor.fetchone()
+ 140 |              
+ 141 |              if existing:
+ 142 |                  print(f"  ⏭️ Query already exists (id={existing[0]}): {query_text[:60]}")
+ 143 |                  return existing[0]
+ 144 |              # اضافه کردن جدید
+ 145 |              cursor.execute('''
+ 146 |                             INSERT INTO generated_queries (source_id, query_text, status)
+ 147 |                             VALUES (?, ?, 'pending')
+ 148 |                             ''', (source_id, query_text))
+ 149 |              new_id = cursor.lastrowid
+ 150 |              print(f"  ✅ New query added (id={new_id}): {query_text[:60]}")
+ 151 |              return new_id    
+ 152 |     def get_pending_queries(self, limit: int = None) -> List[Dict]:
+ 153 |         with self._get_connection() as conn:
+ 154 |             cursor = conn.cursor()
+ 155 |             if limit:
+ 156 |                 cursor.execute('''
+ 157 |                     SELECT id, query_text, source_id
+ 158 |                     FROM generated_queries 
+ 159 |                     WHERE status = 'pending' 
+ 160 |                     ORDER BY id 
+ 161 |                     LIMIT ?
+ 162 |                 ''', (limit,))
+ 163 |             else:
+ 164 |                 cursor.execute('''
+ 165 |                     SELECT id, query_text, source_id
+ 166 |                     FROM generated_queries 
+ 167 |                     WHERE status = 'pending' 
+ 168 |                     ORDER BY id
+ 169 |                 ''')
+ 170 |             return [dict(row) for row in cursor.fetchall()]
+ 171 |     
+ 172 |     def mark_query_done(self, query_id: int):
+ 173 |         with self._get_connection() as conn:
+ 174 |             cursor = conn.cursor()
+ 175 |             cursor.execute('''
+ 176 |                 UPDATE generated_queries SET status = 'done', executed_at = ? WHERE id = ?
+ 177 |             ''', (datetime.now().isoformat(), query_id))
+ 178 |     
+ 179 |     # ========== Businesses ==========
+ 180 |     
+ 181 |     def add_businesses_batch(self, query_id: int, businesses: List[Dict]):
+ 182 |         """اضافه کردن یا به‌روزرسانی هوشمند بیزینس‌ها (گزینه C + quality-aware)"""
+ 183 |         from datetime import datetime
+ 184 |         
+ 185 |         with self._get_connection() as conn:
+ 186 |             cursor = conn.cursor()
+ 187 |             
+ 188 |             for biz in businesses:
+ 189 |                 slug = biz.get('slug')
+ 190 |                 name = biz.get('name')
+ 191 |                 clean_href = biz.get('clean_href')
+ 192 |                 phone = biz.get('phone', '')
+ 193 |                 website = biz.get('website', '')
+ 194 |                 address = biz.get('address', '')
+ 195 |                 
+ 196 |                 # بررسی وجود بیزینس
+ 197 |                 cursor.execute('SELECT id, phone, website, address, status FROM businesses WHERE slug = ?', (slug,))
+ 198 |                 existing = cursor.fetchone()
+ 199 |                 
+ 200 |                 if existing:
+
+     ... (173 lines skipped) ...
+
+======================================================================
+📄 .\app\excel_exporter.py
+======================================================================
+   1 | # app/excel_exporter.py - نسخه اصلاح شده (از دیتابیس می‌خواند)
+   2 | import pandas as pd
+   3 | import sqlite3
+   4 | from datetime import datetime
+   5 | import os
+   6 | from openpyxl.utils import get_column_letter
+   7 | from openpyxl.styles import Alignment
+   8 | from app.config import Config
+   9 | 
+  10 | def export_to_excel(output_path='output/final_output.xlsx'):
+  11 |     """
+  12 |     خروجی گرفتن از دیتابیس در Excel
+  13 |     (دیگر به JSON وابسته نیست)
+  14 |     """
+  15 |     print("=" * 60)
+  16 |     print("📊 Exporting from Database to Excel")
+  17 |     print("=" * 60)
+  18 |     
+  19 |     # اتصال مستقیم به دیتابیس
+  20 |     conn = sqlite3.connect(Config.DATABASE_PATH)
+  21 |     
+  22 |     # گرفتن همه بیزینس‌های موفق
+  23 |     df = pd.read_sql_query('''
+  24 |         SELECT 
+  25 |             name,
+  26 |             phone,
+  27 |             website,
+  28 |             address,
+  29 |             city,
+  30 |             province,
+  31 |             rating,
+  32 |             reviews_count,
+  33 |             place_id,
+  34 |             extracted_at
+  35 |         FROM businesses 
+  36 |         WHERE status = 'done'
+  37 |         ORDER BY id
+  38 |     ''', conn)
+  39 |     
+  40 |     conn.close()
+  41 |     
+  42 |     if df.empty:
+  43 |         print("⚠️ No businesses found in database!")
+  44 |         # ایجاد دیتافریم خالی با ستون‌های مورد نیاز
+  45 |         df = pd.DataFrame(columns=['name', 'phone', 'website', 'address', 'city', 'province'])
+  46 |     
+  47 |     # اضافه کردن ستون کیفیت داده
+  48 |     df['data_quality'] = df.apply(lambda x: 
+  49 |         'high' if x.get('phone') and x.get('website') else
+  50 |         'medium' if x.get('phone') or x.get('website') else 'low', axis=1)
+  51 |     
+  52 |     # مرتب‌سازی بر اساس کیفیت
+  53 |     df = df.sort_values('data_quality', ascending=False)
+  54 |     
+  55 |     # تنظیم عرض ستون‌ها
+  56 |     column_widths = {
+  57 |         'name': 50.00,
+  58 |         'phone': 18.00,
+  59 |         'website': 40.00,
+  60 |         'address': 50.00,
+  61 |         'city': 20.00,
+  62 |         'province': 20.00,
+  63 |         'rating': 10.00,
+  64 |         'reviews_count': 15.00,
+  65 |         'place_id': 35.00,
+  66 |         'extracted_at': 22.00,
+  67 |         'data_quality': 12.00
+  68 |     }
+  69 |     
+  70 |     with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+  71 |         df.to_excel(writer, sheet_name='Businesses', index=False)
+  72 |         
+  73 |         worksheet = writer.sheets['Businesses']
+  74 |         
+  75 |         for idx, col in enumerate(df.columns, 1):
+  76 |             col_letter = get_column_letter(idx)
+  77 |             width = column_widths.get(col, 15.00)
+  78 |             worksheet.column_dimensions[col_letter].width = width
+  79 |             
+  80 |             for cell in worksheet[col_letter]:
+  81 |                 if cell.row > 1:
+  82 |                     cell.alignment = Alignment(horizontal='center', vertical='center')
+  83 |         
+  84 |         for cell in worksheet[1]:
+  85 |             cell.alignment = Alignment(horizontal='center', vertical='center')
+  86 |         
+  87 |         # شیت خلاصه آمار
+  88 |         stats = pd.DataFrame([{
+  89 |             'total_businesses': len(df),
+  90 |             'has_phone': df['phone'].astype(bool).sum() if 'phone' in df.columns else 0,
+  91 |             'has_website': df['website'].astype(bool).sum() if 'website' in df.columns else 0,
+  92 |             'high_quality': (df['data_quality'] == 'high').sum(),
+  93 |             'medium_quality': (df['data_quality'] == 'medium').sum(),
+  94 |             'low_quality': (df['data_quality'] == 'low').sum(),
+  95 |             'export_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+  96 |         }])
+  97 |         stats.to_excel(writer, sheet_name='Summary', index=False)
+  98 |         
+  99 |         summary_ws = writer.sheets['Summary']
+ 100 |         for cell in summary_ws[1]:
+ 101 |             cell.alignment = Alignment(horizontal='center', vertical='center')
+ 102 |         
+ 103 |         for row in summary_ws.iter_rows(min_row=2, max_row=summary_ws.max_row):
+ 104 |             for cell in row:
+ 105 |                 cell.alignment = Alignment(horizontal='center', vertical='center')
+ 106 |     
+ 107 |     print(f"✅ Excel saved: {output_path}")
+ 108 |     print(f"📊 Total businesses: {len(df)}")
+ 109 |     print(f"📞 Phone: {stats['has_phone'].iloc[0]}")
+ 110 |     print(f"🌐 Website: {stats['has_website'].iloc[0]}")
+ 111 | 
+ 112 | if __name__ == "__main__":
+ 113 |     os.makedirs('output', exist_ok=True)
+ 114 |     export_to_excel()
+
+======================================================================
+📄 .\app\main_orchestrator.py
+======================================================================
+   1 | # app/main_orchestrator.py - نسخه نهایی با Checkpoint + Execution Policy
+   2 | import json
+   3 | import os
+   4 | from datetime import datetime
+   5 | from app.maps_collector import collect_businesses
+   6 | from app.business_extractor import extract_businesses
+   7 | from app.excel_exporter import export_to_excel
+   8 | from app.config import Config
+   9 | from app.database import Database  
+  10 | from app.query_generator import QueryGenerator
+  11 | from app.website_crawler import WebsiteCrawler
+  12 | 
+  13 | class Orchestrator:
+  14 |     """مدیر هماهنگ‌کننده اجرای کل پروژه با قابلیت چکپوینت و زمان‌بندی"""
+  15 |     
+  16 |     def __init__(self):
+  17 |         self.results = []
+  18 |         self.checkpoint_file = Config.CHECKPOINT_FILE
+  19 |     
+  20 |     def is_execution_allowed(self) -> bool:
+  21 |         """بررسی آیا در زمان فعلی مجاز به اجرا هستیم (از google_maps_management.xlsx)"""
+  22 |         management_file = Config.MANAGEMENT_FILE
+  23 |         
+  24 |         if not os.path.exists(management_file):
+  25 |             return True
+  26 |         
+  27 |         try:
+  28 |             import pandas as pd
+  29 |             from datetime import datetime
+  30 |             
+  31 |             # خواندن از شیت Config
+  32 |             df = pd.read_excel(management_file, sheet_name='Config')
+  33 |             settings = dict(zip(df['Setting'], df['Value']))
+  34 |             
+  35 |             # ساعت شروع و پایان
+  36 |             start_time_str = str(settings.get('start_time', '08:00')).strip()
+  37 |             end_time_str = str(settings.get('end_time', '23:00')).strip()
+  38 |             
+  39 |             if ':' not in start_time_str:
+  40 |                 start_time_str = '08:00'
+  41 |             if ':' not in end_time_str:
+  42 |                 end_time_str = '23:00'
+  43 |             
+  44 |             current_time_str = datetime.now().strftime('%H:%M')
+  45 |             
+  46 |             if current_time_str < start_time_str or current_time_str > end_time_str:
+  47 |                 print(f"⏸️ Outside execution window ({start_time_str}-{end_time_str})")
+  48 |                 return False
+  49 |             
+  50 |             # وضعیت Pause/Resume
+  51 |             status = str(settings.get('pause_resume', 'resume')).lower()
+  52 |             if status == 'pause':
+  53 |                 print("⏸️ System is paused (pause_resume=pause)")
+  54 |                 return False
+  55 |             
+  56 |             return True
+  57 |             
+  58 |         except Exception as e:
+  59 |             print(f"⚠️ Error checking execution policy: {e}")
+  60 |             return True
+  61 |     
+  62 |     def load_queries_fallback(self):
+  63 |         """بارگذاری کوئری‌ها از فایل JSON (fallback)"""
+  64 |         input_file = os.path.join(Config.INPUT_DIR, 'queries.json')
+  65 |         
+  66 |         if not os.path.exists(input_file):
+  67 |             print(f"⚠️ Fallback file not found: {input_file}")
+  68 |             return []
+  69 |         
+  70 |         with open(input_file, 'r', encoding='utf-8') as f:
+  71 |             queries = json.load(f)
+  72 |         
+  73 |         search_queries = []
+  74 |         for q in queries:
+  75 |             keyword = q.get('keyword', '').strip()
+  76 |             city = q.get('city', '').strip()
+  77 |             if keyword and city:
+  78 |                 search_queries.append(f"{keyword} در {city}")
+  79 |         
+  80 |         return search_queries
+  81 |     
+  82 |     def save_checkpoint(self, query_index, total_queries, current_query):
+  83 |         """ذخیره آخرین وضعیت اجرا"""
+  84 |         checkpoint = {
+  85 |             'last_query_index': query_index,
+  86 |             'total_queries': total_queries,
+  87 |             'current_query': current_query,
+  88 |             'timestamp': datetime.now().isoformat()
+  89 |         }
+  90 |         os.makedirs(os.path.dirname(self.checkpoint_file), exist_ok=True)
+  91 |         with open(self.checkpoint_file, 'w', encoding='utf-8') as f:
+  92 |             json.dump(checkpoint, f, indent=2, ensure_ascii=False)
+  93 |         print(f"💾 Checkpoint saved: Query {query_index}/{total_queries}")
+  94 |     
+  95 |     def load_checkpoint(self):
+  96 |         """بارگذاری آخرین وضعیت اجرا"""
+  97 |         if not os.path.exists(self.checkpoint_file):
+  98 |             return 0
+  99 |         
+ 100 |         try:
+ 101 |             with open(self.checkpoint_file, 'r', encoding='utf-8') as f:
+ 102 |                 checkpoint = json.load(f)
+ 103 |             start_index = checkpoint.get('last_query_index', 0)
+ 104 |             print(f"🔄 Resuming from checkpoint: Query {start_index + 1}")
+ 105 |             return start_index
+ 106 |         except:
+ 107 |             return 0
+ 108 |     
+ 109 |     def clear_checkpoint(self):
+ 110 |         """پاک کردن چکپوینت بعد از اتمام موفق"""
+ 111 |         if os.path.exists(self.checkpoint_file):
+ 112 |             os.remove(self.checkpoint_file)
+ 113 |             print("✅ Checkpoint cleared")
+ 114 |     
+ 115 |     def run(self):
+ 116 |         # ========== بررسی مجوز اجرا (زمان‌بندی) ==========
+ 117 |         if not self.is_execution_allowed():
+ 118 |             print("⏸️ Execution not allowed at this time. Exiting.")
+ 119 |             return
+ 120 |         
+ 121 |         # لاگ شروع اجرا
+ 122 |         log_line = f"{datetime.now().isoformat()} - Starting execution"
+ 123 |         os.makedirs('logs', exist_ok=True)
+ 124 |         with open('logs/execution.log', 'a', encoding='utf-8') as f:
+ 125 |             f.write(log_line + '\n')
+ 126 |         print(log_line)
+ 127 |         
+ 128 |         print("=" * 60)
+ 129 |         print("🚀 Google Maps Scraper - Professional Edition")
+ 130 |         print("=" * 60)
+ 131 |         
+ 132 |         # نمایش تنظیمات فعلی
+ 133 |         self._show_settings()
+ 134 |         
+ 135 |         # ========== مرحله ۱: تولید کوئری‌ها (فقط یکبار) ==========
+ 136 |         print("\n" + "=" * 60)
+ 137 |         print("📍 PHASE 1: Query Generator")
+ 138 |         print("=" * 60)
+ 139 |         
+ 140 |         generator = QueryGenerator()
+ 141 |         queries = generator.run()
+ 142 |         
+ 143 |         if not queries:
+ 144 |             print("⚠️ No queries generated from Excel, trying fallback...")
+ 145 |             queries = self.load_queries_fallback()
+ 146 |         
+ 147 |         if not queries:
+ 148 |             print("❌ No queries found! Please add data to input/google_maps_input.xlsx")
+ 149 |             return
+ 150 |         
+ 151 |         print(f"\n📋 Total queries to process: {len(queries)}")
+ 152 |         
+ 153 |         # ========== بارگذاری چکپوینت ==========
+ 154 |         start_index = self.load_checkpoint()
+ 155 |         
+ 156 |         # ========== فاز ۲ و ۳: برای هر کوئری ==========
+ 157 |         for idx in range(start_index, len(queries)):
+ 158 |             query = queries[idx]
+ 159 |             current_num = idx + 1
+ 160 |             
+ 161 |             print(f"\n{'='*60}")
+ 162 |             print(f"📍 PROCESSING QUERY [{current_num}/{len(queries)}]: {query}")
+ 163 |             print(f"{'='*60}")
+ 164 |             
+ 165 |             # ========== فاز ۲: جمع‌آوری بیزینس‌ها از گوگل مپ ==========
+ 166 |             print("\n🔍 PHASE 2: Maps Collector")
+ 167 |             businesses = collect_businesses(
+ 168 |                 query, 
+ 169 |                 max_scrolls=Config.MAX_SCROLLS,
+ 170 |                 max_businesses=Config.MAX_BUSINESSES_PER_QUERY
+ 171 |             )
+ 172 |             
+ 173 |             if not businesses:
+ 174 |                 print(f"⚠️ No businesses found for: {query}")
+ 175 |                 self.save_checkpoint(current_num, len(queries), query)
+ 176 |                 continue
+ 177 |             
+ 178 |             # ========== ذخیره در دیتابیس ==========
+ 179 |             print("\n💾 Saving to database...")
+ 180 |             db = Database()
+ 181 |             
+ 182 |             reset_count = db.reset_processing_to_pending()
+ 183 |             if reset_count > 0:
+ 184 |                 print(f"🔄 Reset {reset_count} stuck processing jobs")
+ 185 |             
+ 186 |             db.add_businesses_batch(query, businesses)
+ 187 |             db.close()
+ 188 |             
+ 189 |             # ========== فاز ۳: استخراج جزئیات از گوگل مپ ==========
+ 190 |             print("\n📍 PHASE 3: Business Extractor")
+ 191 |             extract_businesses(
+ 192 |                 input_file='output/phase3_output.json',
+ 193 |                 output_file=f'output/phase4_{current_num}.json',
+ 194 |                 max_businesses=Config.MAX_BUSINESSES_TO_EXTRACT,
+ 195 |                 use_profile=Config.USE_CHROME_PROFILE,
+ 196 |                 user_data_dir=Config.USER_DATA_DIR,
+ 197 |                 profile_name=Config.PROFILE_NAME
+ 198 |             )
+ 199 |             
+ 200 |             self.save_checkpoint(current_num, len(queries), query)
+
+     ... (44 lines skipped) ...
+
+======================================================================
+📄 .\app\maps_collector.py
+======================================================================
+   1 | # app/maps_collector.py - نسخه به‌روز شده با Config
+   2 | from playwright.sync_api import sync_playwright
+   3 | import time
+   4 | import json
+   5 | import re
+   6 | import random
+   7 | import os
+   8 | from urllib.parse import quote
+   9 | from app.config import Config
+  10 | 
+  11 | def human_type(page, selector, text):
+  12 |     """تایپ به سبک انسان"""
+  13 |     page.click(selector)
+  14 |     time.sleep(random.uniform(0.3, 0.8))
+  15 |     
+  16 |     for i, char in enumerate(text):
+  17 |         delay = random.uniform(0.05, 0.25)
+  18 |         
+  19 |         if random.random() < Config.MISTAKE_RATE and i > 2:
+  20 |             wrong_char = random.choice('abcdefghijklmnopqrstuvwxyz')
+  21 |             page.keyboard.type(wrong_char, delay=delay)
+  22 |             time.sleep(random.uniform(0.1, 0.3))
+  23 |             page.keyboard.press('Backspace')
+  24 |             time.sleep(random.uniform(0.1, 0.2))
+  25 |         
+  26 |         page.keyboard.type(char, delay=delay)
+  27 |     
+  28 |     time.sleep(random.uniform(0.3, 0.8))
+  29 | 
+  30 | def human_like_mouse_move(page, target_x, target_y):
+  31 |     """حرکت موس به سبک انسان"""
+  32 |     current_x, current_y = random.randint(100, 500), random.randint(100, 300)
+  33 |     steps = random.randint(5, 15)
+  34 |     
+  35 |     for i in range(steps):
+  36 |         t = i / steps
+  37 |         x = current_x + (target_x - current_x) * t + random.randint(-5, 5) * t
+  38 |         y = current_y + (target_y - current_y) * t + random.randint(-3, 3) * t
+  39 |         page.mouse.move(x, y)
+  40 |         time.sleep(random.uniform(0.01, 0.05))
+  41 | 
+  42 | def collect_businesses(search_query, max_scrolls=None, max_businesses=None):
+  43 |     """
+  44 |     جمع‌آوری لیست بیزینس‌ها از گوگل مپ
+  45 |     
+  46 |     Args:
+  47 |         search_query: عبارت جستجو
+  48 |         max_scrolls: اگر None باشد از Config.MAX_SCROLLS استفاده می‌کند
+  49 |         max_businesses: اگر None باشد از Config.MAX_BUSINESSES_PER_QUERY استفاده می‌کند
+  50 |     """
+  51 |     # اگر مقادیر مشخص نشده، از Config بگیر
+  52 |     if max_scrolls is None:
+  53 |         max_scrolls = Config.MAX_SCROLLS
+  54 |     if max_businesses is None:
+  55 |         max_businesses = Config.MAX_BUSINESSES_PER_QUERY
+  56 |     
+  57 |     print(f"📋 Settings: max_scrolls={max_scrolls}, max_businesses={max_businesses}")
+  58 |     
+  59 |     with sync_playwright() as p:
+  60 |         # استفاده از تنظیمات Config
+  61 |         browser = p.chromium.launch(
+  62 |             headless=Config.HEADLESS,
+  63 |             slow_mo=Config.SLOW_MO
+  64 |         )
+  65 |         page = browser.new_page()
+  66 |         
+  67 |         print(f"🧑 Human-like searching: {search_query}")
+  68 |         
+  69 |         # باز کردن گوگل مپ
+  70 |         print("🌍 Opening Google Maps...")
+  71 |         page.goto("https://www.google.com/maps", wait_until="domcontentloaded")
+  72 |         time.sleep(random.uniform(2, 4))
+  73 |         
+  74 |         # کلیک روی جعبه جستجو
+  75 |         print("🔍 Clicking on search box...")
+  76 |         human_like_mouse_move(page, 300, 100)
+  77 |         time.sleep(random.uniform(0.3, 0.6))
+  78 |         
+  79 |         search_box = page.locator('[role="combobox"]').first
+  80 |         search_box.click()
+  81 |         time.sleep(random.uniform(0.4, 0.8))
+  82 |         
+  83 |         # تایپ به سبک انسان
+  84 |         print("⌨️ Typing search query...")
+  85 |         human_type(page, '[role="combobox"]', search_query)
+  86 |         
+  87 |         # زدن Enter
+  88 |         time.sleep(random.uniform(0.5, 1.2))
+  89 |         print("⏎ Pressing Enter...")
+  90 |         page.keyboard.press("Enter")
+  91 |         
+  92 |         # منتظر لود نتایج
+  93 |         print("⏳ Waiting for results...")
+  94 |         time.sleep(random.uniform(3, 6))
+  95 |         
+  96 |         # پیدا کردن feed
+  97 |         feed = None
+  98 |         try:
+  99 |             feed = page.locator('[role="feed"]').first
+ 100 |             feed.wait_for(state="visible", timeout=Config.PAGE_TIMEOUT)
+ 101 |             print("✅ Results loaded")
+ 102 |         except Exception as e:
+ 103 |             print(f"⚠️ Feed not found: {e}")
+ 104 |         
+ 105 |         # اسکرول انسانی (با هندلینگ خطا)
+ 106 |         if feed:
+ 107 |             try:
+ 108 |                 print(f"📜 Scrolling {max_scrolls} times...")
+ 109 |                 for _ in range(max_scrolls):
+ 110 |                     scroll_amount = random.randint(400, 900)
+ 111 |                     feed.evaluate(f"el => el.scrollBy({{top: {scroll_amount}, behavior: 'smooth'}})")
+ 112 |                     # استفاده از تأخیر از Config
+ 113 |                     min_delay, max_delay = Config.DELAY_BETWEEN_SCROLLS
+ 114 |                     time.sleep(random.uniform(min_delay, max_delay))
+ 115 |             except Exception as e:
+ 116 |                 print(f"  ⚠️ Scroll error: {e}")
+ 117 |         else:
+ 118 |             print("⚠️ No feed container found, skipping scroll")
+ 119 |         
+ 120 |         # جمع‌آوری نتایج
+ 121 |         print("📋 Collecting businesses...")
+ 122 |         links = page.query_selector_all('a[href*="/place/"]')
+ 123 |         
+ 124 |         if not links:
+ 125 |             print("⚠️ No business links found on page")
+ 126 |             # ذخیره screenshot برای دیباگ
+ 127 |             try:
+ 128 |                 os.makedirs('screenshots', exist_ok=True)
+ 129 |                 page.screenshot(path='screenshots/no_results.png')
+ 130 |                 print("📸 Screenshot saved: screenshots/no_results.png")
+ 131 |             except:
+ 132 |                 pass
+ 133 |             browser.close()
+ 134 |             return []
+ 135 |         
+ 136 |         businesses = []
+ 137 |         seen_slugs = set()
+ 138 |         
+ 139 |         for link in links:
+ 140 |             try:
+ 141 |                 href = link.get_attribute('href')
+ 142 |                 if not href:
+ 143 |                     continue
+ 144 |                 
+ 145 |                 clean_href = href.split('?')[0]
+ 146 |                 match = re.search(r'/place/([^/?]+)', clean_href)
+ 147 |                 if not match:
+ 148 |                     continue
+ 149 |                 
+ 150 |                 slug = match.group(1)
+ 151 |                 if slug in seen_slugs:
+ 152 |                     continue
+ 153 |                 
+ 154 |                 seen_slugs.add(slug)
+ 155 |                 name = link.get_attribute('aria-label') or "Unknown"
+ 156 |                 
+ 157 |                 businesses.append({
+ 158 |                     'slug': slug,
+ 159 |                     'name': name.strip(),
+ 160 |                     'clean_href': clean_href,
+ 161 |                     'raw_href': href
+ 162 |                 })
+ 163 |                 
+ 164 |                 # اگر به حد مجاز رسیدیم، متوقف شو
+ 165 |                 if max_businesses and len(businesses) >= max_businesses:
+ 166 |                     print(f"⚠️ Reached limit of {max_businesses} businesses, stopping collection")
+ 167 |                     break
+ 168 |                     
+ 169 |             except Exception as e:
+ 170 |                 print(f"  ⚠️ Error processing link: {e}")
+ 171 |                 continue
+ 172 |         
+ 173 |         # اعمال محدودیت نهایی
+ 174 |         if max_businesses and len(businesses) > max_businesses:
+ 175 |             businesses = businesses[:max_businesses]
+ 176 |             print(f"⚠️ Limited to first {max_businesses} businesses")
+ 177 |         
+ 178 |         if not businesses:
+ 179 |             print("⚠️ No businesses collected!")
+ 180 |             browser.close()
+ 181 |             return []
+ 182 |         
+ 183 |         # ذخیره خروجی
+ 184 |         output = {
+ 185 |             'query': search_query,
+ 186 |             'total': len(businesses),
+ 187 |             'businesses': businesses,
+ 188 |             'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
+ 189 |         }
+ 190 |         
+ 191 |         os.makedirs('output', exist_ok=True)
+ 192 |         with open('output/phase3_output.json', 'w', encoding='utf-8') as f:
+ 193 |             json.dump(output, f, indent=2, ensure_ascii=False)
+ 194 |         
+ 195 |         print(f"\n✅ Collected {len(businesses)} businesses")
+ 196 |         
+ 197 |         time.sleep(random.uniform(2, 4))
+ 198 |         browser.close()
+ 199 |         
+ 200 |         return businesses
+
+     ... (4 lines skipped) ...
+
+======================================================================
+📄 .\app\output_model.py
+======================================================================
+   1 | # app/output_model.py - نسخه نهایی (Canonical Schema)
+   2 | from dataclasses import dataclass, field
+   3 | from typing import List, Optional
+   4 | from datetime import datetime
+   5 | import re
+   6 | 
+   7 | @dataclass
+   8 | class BusinessRecord:
+   9 |     """
+  10 |     مدل اصلی بیزینس - Single Source of Truth
+  11 |     تمام تبدیل‌ها (DB → Excel → API) باید از روی این مدل انجام شوند
+  12 |     """
+  13 |     
+  14 |     # ========== شناسه‌ها ==========
+  15 |     business_id: int                          # شناسه داخلی دیتابیس
+  16 |     query_text: str                           # عبارت جستجو
+  17 |     place_id: Optional[str] = ""              # کلید یکتای گوگل مپ (برای upsert)
+  18 |     slug: Optional[str] = ""                  # کلید یکتای جایگزین
+  19 |     
+  20 |     # ========== اطلاعات اصلی ==========
+  21 |     name: str = ""                            # نام بیزینس
+  22 |     
+  23 |     # ========== اطلاعات تماس ==========
+  24 |     phone_landline: Optional[str] = ""        # شماره ثابت
+  25 |     phone_mobile: Optional[str] = ""          # شماره موبایل
+  26 |     website: Optional[str] = ""               # وبسایت
+  27 |     email: Optional[str] = ""                 # ایمیل (از وبسایت)
+  28 |     extra_phones: str = ""                    # شماره‌های اضافی (comma separated)
+  29 |     
+  30 |     # ========== شبکه‌های اجتماعی ==========
+  31 |     instagram: Optional[str] = ""
+  32 |     telegram: Optional[str] = ""
+  33 |     whatsapp: Optional[str] = ""
+  34 |     
+  35 |     # ========== اطلاعات مکان ==========
+  36 |     province: Optional[str] = ""
+  37 |     city: Optional[str] = ""
+  38 |     address: Optional[str] = ""
+  39 |     
+  40 |     # ========== امتیازات گوگل ==========
+  41 |     rating: Optional[float] = None
+  42 |     reviews_count: Optional[int] = None
+  43 |     hours: Optional[str] = ""
+  44 |     
+  45 |     # ========== کیفیت داده ==========
+  46 |     quality_score: str = "medium"             # high / medium / low
+  47 |     extraction_date: str = ""                 # تاریخ استخراج
+  48 |     
+  49 |     def __post_init__(self):
+  50 |      if not self.extraction_date:
+  51 |          self.extraction_date = datetime.now().isoformat()
+  52 |     
+  53 |      # محاسبه quality_score با وزن
+  54 |      score = 0
+  55 |      if self.phone_landline or self.phone_mobile:
+  56 |          score += 1
+  57 |      if self.website:
+  58 |          score += 1
+  59 |      if self.email:
+  60 |          score += 2
+  61 |      if self.instagram or self.telegram or self.whatsapp:
+  62 |          score += 1
+  63 |      if self.extra_phones:
+  64 |          score += 1
+  65 |      if self.rating and self.rating > 0:
+  66 |          score += 1
+  67 |     
+  68 |      if score >= 5:
+  69 |          self.quality_score = "high"
+  70 |      elif score >= 3:
+  71 |          self.quality_score = "medium"
+  72 |      else:
+  73 |          self.quality_score = "low"    
+  74 |     # ========== متدهای کمکی ==========
+  75 |     @staticmethod
+  76 |     def clean_phone(phone: str) -> str:
+  77 |         """پاکسازی شماره تلفن"""
+  78 |         if not phone:
+  79 |             return ""
+  80 |         cleaned = re.sub(r'[^\d]', '', phone)
+  81 |         if cleaned in ['00000000000', '0'] or len(cleaned) < 8:
+  82 |             return ""
+  83 |         return cleaned
+  84 |     
+  85 |     @staticmethod
+  86 |     def clean_social(social: str) -> str:
+  87 |         """پاکسازی لینک شبکه اجتماعی"""
+  88 |         if not social:
+  89 |             return ""
+  90 |         social = re.sub(r'^https?://', '', social)
+  91 |         social = re.sub(r'^www\.', '', social)
+  92 |         return social.lower()
+  93 |     
+  94 |     # ========== تبدیل به فرمت‌های مختلف ==========
+  95 |     def to_afrakala_payload(self) -> dict:
+  96 |         """تبدیل به فرمت API افراکالا (مطابق مستندات)"""
+  97 |         return {
+  98 |             "name": self.name,
+  99 |             "phone": self.clean_phone(self.phone_landline or self.phone_mobile or ""),
+ 100 |             "mobile_phone": self.clean_phone(self.phone_mobile or ""),
+ 101 |             "website": self.website,
+ 102 |             "address": self.address,
+ 103 |             "province": self.province,
+ 104 |             "city": self.city,
+ 105 |             "rating": self.rating,
+ 106 |             "reviews_count": self.reviews_count,
+ 107 |             "place_id": self.place_id,
+ 108 |             "extracted_at": self.extraction_date,
+ 109 |             "meta_quality": self.quality_score,
+ 110 |             # اطلاعات اضافی از crawler
+ 111 |             "email": self.email,
+ 112 |             "instagram": self.clean_social(self.instagram),
+ 113 |             "telegram": self.clean_social(self.telegram),
+ 114 |             "whatsapp": self.clean_social(self.whatsapp),
+ 115 |             "extra_phones": self.extra_phones
+ 116 |         }
+ 117 |     
+ 118 |     def to_db_dict(self) -> dict:
+ 119 |         """تبدیل به دیکشنری برای ذخیره در دیتابیس"""
+ 120 |         return {
+ 121 |             "business_id": self.business_id,
+ 122 |             "query_text": self.query_text,
+ 123 |             "name": self.name,
+ 124 |             "phone_landline": self.phone_landline,
+ 125 |             "phone_mobile": self.phone_mobile,
+ 126 |             "website": self.website,
+ 127 |             "address": self.address,
+ 128 |             "province": self.province,
+ 129 |             "city": self.city,
+ 130 |             "rating": self.rating,
+ 131 |             "reviews_count": self.reviews_count,
+ 132 |             "place_id": self.place_id,
+ 133 |             "slug": self.slug,
+ 134 |             "email": self.email,
+ 135 |             "instagram": self.instagram,
+ 136 |             "telegram": self.telegram,
+ 137 |             "whatsapp": self.whatsapp,
+ 138 |             "extra_phones": self.extra_phones,
+ 139 |             "quality_score": self.quality_score,
+ 140 |             "extraction_date": self.extraction_date
+ 141 |         }
+ 142 |     
+ 143 |     def to_excel_row(self) -> dict:
+ 144 |         """تبدیل به دیکشنری برای خروجی Excel"""
+ 145 |         return {
+ 146 |             "شناسه": self.business_id,
+ 147 |             "عبارت جستجو": self.query_text,
+ 148 |             "نام بیزینس": self.name,
+ 149 |             "شماره ثابت": self.clean_phone(self.phone_landline or ""),
+ 150 |             "شماره موبایل": self.clean_phone(self.phone_mobile or ""),
+ 151 |             "ایمیل": self.email,
+ 152 |             "وبسایت": self.website,
+ 153 |             "اینستاگرام": self.clean_social(self.instagram),
+ 154 |             "تلگرام": self.clean_social(self.telegram),
+ 155 |             "واتساپ": self.clean_social(self.whatsapp),
+ 156 |             "استان": self.province,
+ 157 |             "شهر": self.city,
+ 158 |             "آدرس": self.address,
+ 159 |             "امتیاز": self.rating,
+ 160 |             "تعداد نظرات": self.reviews_count,
+ 161 |             "کیفیت داده": self.quality_score,
+ 162 |             "تاریخ استخراج": self.extraction_date
+ 163 |         }
+
+======================================================================
+📄 .\app\query_generator.py
+======================================================================
+   1 | # app/query_generator.py
+   2 | import pandas as pd
+   3 | import json
+   4 | from typing import List, Dict
+   5 | from app.database import Database
+   6 | import os
+   7 | 
+   8 | class QueryGenerator:
+   9 |     """ساخت و مدیریت کوئری‌های جستجو از فایل Excel"""
+  10 |     
+  11 |     def __init__(self, input_file='input/google_maps_input.xlsx'):
+  12 |         self.input_file = input_file
+  13 |         self.db = Database()
+  14 |     
+  15 |     def load_sources(self) -> List[Dict]:
+  16 |         """بارگذاری منابع از فایل Excel"""
+  17 |         if not os.path.exists(self.input_file):
+  18 |             print(f"❌ Input file not found: {self.input_file}")
+  19 |             return []
+  20 |         
+  21 |         df = pd.read_excel(self.input_file)
+  22 |         
+  23 |         # فقط ردیف‌های فعال
+  24 |         active_sources = df[df['active'] == 1]
+  25 |         
+  26 |         sources = []
+  27 |         for _, row in active_sources.iterrows():
+  28 |             source = {
+  29 |                 'city': str(row.get('شهر', '')).strip(),
+  30 |                 'province': str(row.get('استان', '')).strip(),
+  31 |                 'keyword': str(row.get('کلمه اصلی', '')).strip(),
+  32 |                 'brand': str(row.get('برند', '')).strip(),
+  33 |                 'related_keywords': str(row.get('کلمات مرتبط', '')).strip(),
+  34 |                 'category': str(row.get('دسته بندی', '')).strip(),
+  35 |                 'active': int(row.get('active', 1))
+  36 |             }
+  37 |             sources.append(source)
+  38 |         
+  39 |         return sources
+  40 |     
+  41 |     def generate_queries_from_source(self, source: Dict) -> List[str]:
+  42 |         """تولید کوئری از یک منبع"""
+  43 |         queries = []
+  44 |         
+  45 |         keyword = source['keyword']
+  46 |         city = source['city']
+  47 |         province = source['province']
+  48 |         brand = source['brand']
+  49 |         related = source['related_keywords']
+  50 | 
+  51 |         # ترکیب 1: کلمه اصلی + شهر
+  52 |         if keyword and city:
+  53 |             queries.append(f"{keyword} در {city}")
+  54 |         
+  55 |         # ترکیب 2: کلمه اصلی + استان
+  56 |         if keyword and province:
+  57 |             queries.append(f"{keyword} در {province}")
+  58 |         
+  59 |         # ترکیب 3: برند + کلمه اصلی
+  60 |         if brand and brand != 'nan' and brand != '' and keyword:
+  61 |             queries.append(f"{brand} {keyword}")
+  62 |         
+  63 |         # ترکیب 4: برند + کلمه اصلی + شهر
+  64 |         if brand and keyword and city:
+  65 |             queries.append(f"{brand} {keyword} در {city}")
+  66 |         
+  67 |         # ترکیب 5: کلمات مرتبط + شهر
+  68 |         if related and city:
+  69 |             related_list = [r.strip() for r in related.split(',')]
+  70 |             for r in related_list[:3]:  # حداکثر 3 کلمه مرتبط
+  71 |                 if r:
+  72 |                     queries.append(f"{r} در {city}")
+  73 |         
+  74 |         # حذف تکراری‌ها
+  75 |         return list(set(queries))
+  76 |     
+  77 |     def save_source_to_db(self, source: Dict, queries: List[str]) -> int:
+  78 |         """ذخیره منبع و کوئری‌ها در دیتابیس"""
+  79 |         # ذخیره منبع
+  80 |         source_id = self.db.add_search_source(source)
+  81 |         
+  82 |         if source_id:
+  83 |             # ذخیره کوئری‌ها
+  84 |             for query in queries:
+  85 |                 self.db.add_generated_query(source_id, query)
+  86 |                 print(f"  📝 Added query: {query}")
+  87 |         
+  88 |         return source_id
+  89 |     
+  90 |     def run(self):
+  91 |         """اجرای کامل تولید و ذخیره کوئری‌ها"""
+  92 |         print("=" * 60)
+  93 |         print("📍 Query Generator")
+  94 |         print("=" * 60)
+  95 |         
+  96 |         sources = self.load_sources()
+  97 |         
+  98 |         if not sources:
+  99 |             print("❌ No active sources found!")
+ 100 |             return []
+ 101 |         
+ 102 |         print(f"📋 Found {len(sources)} active sources")
+ 103 |         
+ 104 |         all_queries = []
+ 105 |         
+ 106 |         for src in sources:
+ 107 |             print(f"\n🔍 Processing: {src.get('keyword')} - {src.get('city')}")
+ 108 |             queries = self.generate_queries_from_source(src)
+ 109 |             
+ 110 |             if queries:
+ 111 |                 self.save_source_to_db(src, queries)
+ 112 |                 all_queries.extend(queries)
+ 113 |                 print(f"  ✅ Generated {len(queries)} queries")
+ 114 |             else:
+ 115 |                 print(f"  ⚠️ No queries generated")
+ 116 |         
+ 117 |         # نمایش آمار نهایی
+ 118 |         pending = self.db.get_pending_queries()
+ 119 |         print(f"\n📊 Total generated queries: {len(all_queries)}")
+ 120 |         print(f"📊 Pending queries in DB: {len(pending)}")
+ 121 |         
+ 122 |         self.db.close()
+ 123 |         return all_queries
+ 124 | 
+ 125 | if __name__ == "__main__":
+ 126 |     generator = QueryGenerator()
+ 127 |     generator.run()
+
+======================================================================
+📄 .\app\sync_to_afrakala.py
+======================================================================
+   1 | # app/sync_to_afrakala.py - نسخه اصلاح شده
+   2 | import json
+   3 | import time
+   4 | import requests
+   5 | from typing import Dict, List, Optional
+   6 | from app.database import Database
+   7 | from app.output_model import BusinessRecord
+   8 | from app.config import Config
+   9 | 
+  10 | class SimpleSync:
+  11 |     """Sync ساده برای افراکالا - فقط MVP"""
+  12 |     
+  13 |     BASE_URL = "http://192.168.170.10:3000"
+  14 |     TABLE_SLUG = "google-maps-extracted-businesses"
+  15 |     
+  16 |     def __init__(self, api_key: str):
+  17 |         self.api_key = api_key
+  18 |         self.db = Database()
+  19 |         self.headers = {
+  20 |             "Authorization": f"Bearer {self.api_key}",
+  21 |             "Content-Type": "application/json"
+  22 |         }
+  23 |     
+  24 |     def sync_pending(self, limit: int = 100):
+  25 |         """فقط رکوردهای pending را sync کن"""
+  26 |         print("=" * 60)
+  27 |         print("🔄 Syncing pending businesses to AfraKala")
+  28 |         print("=" * 60)
+  29 |         
+  30 |         # گرفتن pending businessها
+  31 |         with self.db._get_connection() as conn:
+  32 |             cursor = conn.cursor()
+  33 |             cursor.execute('''
+  34 |                 SELECT 
+  35 |                     b.id, b.name, b.phone, b.website, b.address,
+  36 |                     b.city, b.province, b.rating, b.reviews_count,
+  37 |                     b.place_id, b.extracted_at,
+  38 |                     w.email, w.instagram, w.telegram, w.whatsapp, w.extra_phones
+  39 |                 FROM businesses b
+  40 |                 LEFT JOIN website_extractions w ON w.business_id = b.id
+  41 |                 WHERE b.status = 'done' AND (b.sync_status IS NULL OR b.sync_status = 'pending')
+  42 |                 ORDER BY b.id
+  43 |                 LIMIT ?
+  44 |             ''', (limit,))
+  45 |             rows = cursor.fetchall()
+  46 |         
+  47 |         if not rows:
+  48 |             print("✅ No pending businesses to sync")
+  49 |             return
+  50 |         
+  51 |         print(f"📋 Found {len(rows)} pending businesses")
+  52 |         
+  53 |         success_count = 0
+  54 |         fail_count = 0
+  55 |         
+  56 |         for row in rows:
+  57 |             business_id = row[0]
+  58 |             
+  59 |             # ساخت record با query_text خالی (اجباری نیست برای sync)
+  60 |             record = BusinessRecord(
+  61 |                 business_id=business_id,
+  62 |                 query_text="",  # اضافه شد
+  63 |                 name=row[1] or "",
+  64 |                 phone_landline=row[2] or "",
+  65 |                 phone_mobile="",
+  66 |                 website=row[3] or "",
+  67 |                 address=row[4] or "",
+  68 |                 city=row[5] or "",
+  69 |                 province=row[6] or "",
+  70 |                 rating=row[7],
+  71 |                 reviews_count=row[8],
+  72 |                 place_id=row[9] or "",
+  73 |                 extraction_date=row[10] or "",
+  74 |                 email=row[11] or "",
+  75 |                 instagram=row[12] or "",
+  76 |                 telegram=row[13] or "",
+  77 |                 whatsapp=row[14] or "",
+  78 |                 extra_phones=row[15] or ""
+  79 |             )
+  80 |             
+  81 |             # validation ساده
+  82 |             if not record.name:
+  83 |                 self._mark_failed(business_id, "name is required")
+  84 |                 fail_count += 1
+  85 |                 print(f"  ❌ {business_id}: name is required")
+  86 |                 continue
+  87 |             
+  88 |             # ارسال با retry (۳ بار)
+  89 |             success = self._send_with_retry(record)
+  90 |             
+  91 |             if success:
+  92 |                 self._mark_synced(business_id)
+  93 |                 success_count += 1
+  94 |                 print(f"  ✅ {record.name[:40]}... synced")
+  95 |             else:
+  96 |                 self._mark_failed(business_id, "API error after 3 retries")
+  97 |                 fail_count += 1
+  98 |                 print(f"  ❌ {record.name[:40]}... failed")
+  99 |             
+ 100 |             time.sleep(0.5)  # rate limit protection
+ 101 |         
+ 102 |         print(f"\n📊 Results: {success_count} synced, {fail_count} failed")
+ 103 |     
+ 104 |     def _send_with_retry(self, record: BusinessRecord, max_retries: int = 3) -> bool:
+ 105 |         """ارسال با retry"""
+ 106 |         payload = self._build_payload(record)
+ 107 |         
+ 108 |         for attempt in range(max_retries):
+ 109 |             try:
+ 110 |                 response = self._post_to_api(payload)
+ 111 |                 if response.get("success"):
+ 112 |                     return True
+ 113 |                 else:
+ 114 |                     print(f"    Attempt {attempt + 1} failed: {response.get('error')}")
+ 115 |                     time.sleep(2 ** attempt)  # exponential backoff
+ 116 |             except Exception as e:
+ 117 |                 print(f"    Attempt {attempt + 1} error: {e}")
+ 118 |                 time.sleep(2 ** attempt)
+ 119 |         
+ 120 |         return False
+ 121 |     
+ 122 |     def _build_payload(self, record: BusinessRecord) -> Dict:
+ 123 |         """ساخت payload ساده"""
+ 124 |         # unique key با place_id یا ترکیب name+phone
+ 125 |         unique_key = record.place_id if record.place_id else f"{record.name}_{record.phone_landline}"
+ 126 |         
+ 127 |         return {
+ 128 |             "unique_by": ["place_id"] if record.place_id else ["name", "phone"],
+ 129 |             "values": {
+ 130 |                 "name": record.name,
+ 131 |                 "phone": record.phone_landline,
+ 132 |                 "mobile_phone": record.phone_mobile,
+ 133 |                 "website": record.website,
+ 134 |                 "address": record.address,
+ 135 |                 "province": record.province,
+ 136 |                 "city": record.city,
+ 137 |                 "rating": record.rating,
+ 138 |                 "reviews_count": record.reviews_count,
+ 139 |                 "place_id": record.place_id,
+ 140 |                 "extracted_at": record.extraction_date,
+ 141 |                 "meta_quality": record.quality_score,
+ 142 |                 "email": record.email,
+ 143 |                 "instagram": record.instagram,
+ 144 |                 "telegram": record.telegram,
+ 145 |                 "whatsapp": record.whatsapp,
+ 146 |                 "extra_phones": record.extra_phones
+ 147 |             }
+ 148 |         }
+ 149 |     
+ 150 |     def _post_to_api(self, payload: Dict) -> Dict:
+ 151 |         """POST به API"""
+ 152 |         url = f"{self.BASE_URL}/api/public/bot/dynamic-tables/by-slug/{self.TABLE_SLUG}/rows/upsert"
+ 153 |         
+ 154 |         try:
+ 155 |             response = requests.post(url, headers=self.headers, json=payload, timeout=30)
+ 156 |             if response.status_code in [200, 201]:
+ 157 |                 return {"success": True, "data": response.json()}
+ 158 |             else:
+ 159 |                 return {"success": False, "error": f"HTTP {response.status_code}: {response.text[:100]}"}
+ 160 |         except requests.exceptions.Timeout:
+ 161 |             return {"success": False, "error": "Timeout"}
+ 162 |         except requests.exceptions.ConnectionError:
+ 163 |             return {"success": False, "error": "Connection error"}
+ 164 |         except Exception as e:
+ 165 |             return {"success": False, "error": str(e)}
+ 166 |     
+ 167 |     def _mark_synced(self, business_id: int):
+ 168 |         with self.db._get_connection() as conn:
+ 169 |             cursor = conn.cursor()
+ 170 |             cursor.execute('''
+ 171 |                 UPDATE businesses 
+ 172 |                 SET sync_status = 'synced', updated_at = CURRENT_TIMESTAMP
+ 173 |                 WHERE id = ?
+ 174 |             ''', (business_id,))
+ 175 |     
+ 176 |     def _mark_failed(self, business_id: int, error: str):
+ 177 |         with self.db._get_connection() as conn:
+ 178 |             cursor = conn.cursor()
+ 179 |             cursor.execute('''
+ 180 |                 UPDATE businesses 
+ 181 |                 SET sync_status = 'failed', last_error = ?, updated_at = CURRENT_TIMESTAMP
+ 182 |                 WHERE id = ?
+ 183 |             ''', (error[:200], business_id))
+ 184 |     
+ 185 |     def close(self):
+ 186 |         self.db.close()
+ 187 | 
+ 188 | 
+ 189 | def main():
+ 190 |     print("=" * 60)
+ 191 |     print("🤖 Simple Sync to AfraKala")
+ 192 |     print("=" * 60)
+ 193 |     
+ 194 |     api_key = input("Enter your AfraKala API Key: ").strip()
+ 195 |     if not api_key:
+ 196 |         print("❌ API Key required")
+ 197 |         return
+ 198 |     
+ 199 |     syncer = SimpleSync(api_key)
+ 200 |     
+
+     ... (26 lines skipped) ...
+
+======================================================================
+📄 .\app\sync_to_google_sheets.py
+======================================================================
+   1 | # app/sync_to_google_sheets.py
+   2 | import json
+   3 | import gspread
+   4 | from oauth2client.service_account import ServiceAccountCredentials
+   5 | from app.database import Database
+   6 | from app.config import Config
+   7 | 
+   8 | class GoogleSheetsSync:
+   9 |     """همگام‌سازی داده‌ها با Google Sheets"""
+  10 |     
+  11 |     SHEET_URL = "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit"
+  12 |     
+  13 |     def __init__(self):
+  14 |         self.db = Database()
+  15 |         self.client = self._get_client()
+  16 |         self.sheet = self._get_sheet()
+  17 |         self._row_cache = None  # کش برای lookup_key → row number
+  18 |     
+  19 |     def _get_client(self):
+  20 |         """دریافت کلاینت Google Sheets"""
+  21 |         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+  22 |         
+  23 |         creds_path = getattr(Config, 'GOOGLE_SHEETS_CREDENTIALS', 'config/google_sheets_credentials.json')
+  24 |         creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, scope)
+  25 |         return gspread.authorize(creds)
+  26 |     
+  27 |     def _get_sheet(self):
+  28 |         """دریافت یا ایجاد شیت"""
+  29 |         try:
+  30 |             sheet = self.client.open_by_url(self.SHEET_URL).sheet1
+  31 |         except gspread.SpreadsheetNotFound:
+  32 |             # فقط اگر Sheet واقعاً پیدا نشد، ایجاد کن
+  33 |             print("📝 Sheet not found, creating new one...")
+  34 |             sheet = self.client.create("Google Maps Scraper Data")
+  35 |             sheet = sheet.sheet1
+  36 |         except Exception as e:
+  37 |             print(f"❌ Error opening sheet: {e}")
+  38 |             raise
+  39 |         
+  40 |         # اضافه کردن هدرها اگر خالی است
+  41 |         if not sheet.get_all_values():
+  42 |             headers = [
+  43 |                 'lookup_key', 'place_id', 'name', 'phone', 'website', 'address',
+  44 |                 'rating', 'reviews_count', 'email', 'instagram', 'telegram',
+  45 |                 'meta_quality', 'sync_status', 'extracted_at', 'last_seen_at'
+  46 |             ]
+  47 |             sheet.append_row(headers)
+  48 |         
+  49 |         return sheet
+  50 |     
+  51 |     def _build_row_cache(self):
+  52 |         """ساخت کش lookup_key → row number (یک بار در ابتدا)"""
+  53 |         if self._row_cache is not None:
+  54 |             return self._row_cache
+  55 |         
+  56 |         self._row_cache = {}
+  57 |         all_data = self.sheet.get_all_values()
+  58 |         
+  59 |         for i, row in enumerate(all_data[1:], start=2):  # skip header
+  60 |             if row and len(row) > 0:
+  61 |                 lookup_key = row[0]  # ستون اول lookup_key است
+  62 |                 if lookup_key:
+  63 |                     self._row_cache[lookup_key] = i
+  64 |         
+  65 |         return self._row_cache
+  66 |     
+  67 |     def _generate_lookup_key(self, place_id: str, name: str, phone: str, website: str) -> str:
+  68 |         """تولید کلید یکتا برای lookup"""
+  69 |         if place_id:
+  70 |             return place_id
+  71 |         # fallback: ترکیب name_phone_website
+  72 |         return f"{name}_{phone}_{website}".replace(" ", "_")[:100]
+  73 |     
+  74 |     def _calculate_quality(self, phone: str, website: str, email: str) -> str:
+  75 |         """محاسبه کیفیت داده"""
+  76 |         score = 0
+  77 |         if phone:
+  78 |             score += 1
+  79 |         if website:
+  80 |             score += 1
+  81 |         if email:
+  82 |             score += 2
+  83 |         
+  84 |         if score >= 3:
+  85 |             return "high"
+  86 |         elif score >= 1:
+  87 |             return "medium"
+  88 |         return "low"
+  89 |     
+  90 |     def _prepare_rows_data(self, rows) -> tuple:
+  91 |         """آماده‌سازی داده‌ها برای ارسال به Google Sheets"""
+  92 |         # ساخت کش
+  93 |         row_cache = self._build_row_cache()
+  94 |         
+  95 |         rows_to_append = []      # ردیف‌های جدید
+  96 |         rows_to_update = []      # (row_number, row_data)
+  97 |         business_ids_to_sync = []  # برای آپدیت sync_status
+  98 |         
+  99 |         for row in rows:
+ 100 |             business_id = row[0]      # id داخلی
+ 101 |             place_id = row[1] or ""
+ 102 |             name = row[2] or ""
+ 103 |             phone = row[3] or ""
+ 104 |             website = row[4] or ""
+ 105 |             address = row[5] or ""
+ 106 |             rating = row[6] or ""
+ 107 |             reviews_count = row[7] or ""
+ 108 |             extracted_at = row[8] or ""
+ 109 |             last_seen_at = row[9] or ""
+ 110 |             email = row[10] or ""
+ 111 |             instagram = row[11] or ""
+ 112 |             telegram = row[12] or ""
+ 113 |             
+ 114 |             # تولید lookup_key (place_id یا fallback)
+ 115 |             lookup_key = self._generate_lookup_key(place_id, name, phone, website)
+ 116 |             meta_quality = self._calculate_quality(phone, website, email)
+ 117 |             
+ 118 |             row_data = [
+ 119 |                 lookup_key, place_id, name, phone, website, address,
+ 120 |                 rating, reviews_count, email, instagram, telegram,
+ 121 |                 meta_quality, 'synced', extracted_at, last_seen_at
+ 122 |             ]
+ 123 |             
+ 124 |             # بررسی وجود lookup_key در کش
+ 125 |             existing_row = row_cache.get(lookup_key)
+ 126 |             
+ 127 |             if existing_row:
+ 128 |                 rows_to_update.append((existing_row, row_data))
+ 129 |             else:
+ 130 |                 rows_to_append.append(row_data)
+ 131 |                 # ذخیره در کش برای بقیه batch
+ 132 |                 row_cache[lookup_key] = None  # placeholder
+ 133 |             
+ 134 |             business_ids_to_sync.append(business_id)
+ 135 |         
+ 136 |         return rows_to_append, rows_to_update, business_ids_to_sync
+ 137 |     
+ 138 |     def sync_pending(self, batch_size: int = 50):
+ 139 |         """همگام‌سازی بیزینس‌های pending با Google Sheets"""
+ 140 |         print("=" * 60)
+ 141 |         print("🔄 Syncing to Google Sheets")
+ 142 |         print("=" * 60)
+ 143 |         
+ 144 |         # گرفتن pending businessها با id داخلی
+ 145 |         with self.db._get_connection() as conn:
+ 146 |             cursor = conn.cursor()
+ 147 |             cursor.execute('''
+ 148 |                 SELECT 
+ 149 |                     b.id,
+ 150 |                     b.place_id, b.name, b.phone, b.website, b.address,
+ 151 |                     b.rating, b.reviews_count, b.extracted_at, b.last_seen_at,
+ 152 |                     w.email, w.instagram, w.telegram
+ 153 |                 FROM businesses b
+ 154 |                 LEFT JOIN website_extractions w ON w.business_id = b.id
+ 155 |                 WHERE b.status = 'done' AND (b.sync_status IS NULL OR b.sync_status = 'pending')
+ 156 |                 ORDER BY b.id
+ 157 |                 LIMIT ?
+ 158 |             ''', (batch_size,))
+ 159 |             rows = cursor.fetchall()
+ 160 |         
+ 161 |         if not rows:
+ 162 |             print("✅ No pending businesses to sync")
+ 163 |             return
+ 164 |         
+ 165 |         print(f"📋 Found {len(rows)} pending businesses")
+ 166 |         
+ 167 |         # آماده‌سازی داده‌ها
+ 168 |         rows_to_append, rows_to_update, business_ids_to_sync = self._prepare_rows_data(rows)
+ 169 |         
+ 170 |         # اضافه کردن ردیف‌های جدید به صورت batch
+ 171 |         if rows_to_append:
+ 172 |             self.sheet.append_rows(rows_to_append)
+ 173 |             print(f"  ✅ Added {len(rows_to_append)} new rows")
+ 174 |         
+ 175 |         # به‌روزرسانی ردیف‌های موجود (batch update)
+ 176 |         if rows_to_update:
+ 177 |             # برای بهینه‌تر شدن، می‌توانیم batch update کنیم
+ 178 |             for row_num, row_data in rows_to_update:
+ 179 |                 self.sheet.update(f"A{row_num}:O{row_num}", [row_data])
+ 180 |             print(f"  🔄 Updated {len(rows_to_update)} existing rows")
+ 181 |         
+ 182 |         # آپدیت sync_status در دیتابیس با id داخلی
+ 183 |         if business_ids_to_sync:
+ 184 |             self._mark_synced(business_ids_to_sync)
+ 185 |         
+ 186 |         print(f"\n✅ Synced {len(rows)} businesses to Google Sheets")
+ 187 |     
+ 188 |     def _mark_synced(self, business_ids: list):
+ 189 |         """علامت‌گذاری رکوردهای همگام‌سازی شده در دیتابیس (با id داخلی)"""
+ 190 |         if not business_ids:
+ 191 |             return
+ 192 |         
+ 193 |         with self.db._get_connection() as conn:
+ 194 |             cursor = conn.cursor()
+ 195 |             placeholders = ','.join('?' * len(business_ids))
+ 196 |             cursor.execute(f'''
+ 197 |                 UPDATE businesses 
+ 198 |                 SET sync_status = 'synced', updated_at = CURRENT_TIMESTAMP
+ 199 |                 WHERE id IN ({placeholders})
+ 200 |             ''', business_ids)
+
+     ... (39 lines skipped) ...
+
+======================================================================
+📄 .\app\sync_to_google_sheets_oauth.py
+======================================================================
+   1 | # app/sync_to_google_sheets_oauth.py
+   2 | import gspread
+   3 | import json
+   4 | import os
+   5 | from google_auth_oauthlib.flow import InstalledAppFlow
+   6 | from google.auth.transport.requests import Request
+   7 | from google.oauth2.credentials import Credentials
+   8 | from app.database import Database
+   9 | from app.config import Config
+  10 | 
+  11 | class GoogleSheetsOAuthSync:
+  12 |     """همگام‌سازی داده‌ها با Google Sheets (OAuth - فقط یک بار لاگین)"""
+  13 |     
+  14 |     # 👇 این را با لینک شیت خودت جایگزین کن
+  15 |     SHEET_URL = "https://docs.google.com/spreadsheets/d/1dhnXkQiuKtFjAOFb8SBupRAJdte2YyYMuln1vejbcfE/edit?gid=0#gid=0"
+  16 |     
+  17 |     # پیکربندی OAuth (بدون نیاز به Cloud Console)
+  18 |     CLIENT_CONFIG = {
+  19 |         "installed": {
+  20 |             "client_id": "32555940559.apps.googleusercontent.com",
+  21 |             "client_secret": "ZmssLNjJyU8sOblx6brC3rQD",
+  22 |             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  23 |             "token_uri": "https://oauth2.googleapis.com/token",
+  24 |             "redirect_uris": ["urn:ietf:wg:oauth:2.0:oob", "http://localhost"]
+  25 |         }
+  26 |     }
+  27 |     
+  28 |     SCOPE = ["https://www.googleapis.com/auth/spreadsheets"]
+  29 |     
+  30 |     def __init__(self):
+  31 |         self.db = Database()
+  32 |         self.client = self._get_client()
+  33 |         self.sheet = self._get_sheet()
+  34 |         self._row_cache = None
+  35 |     
+  36 |     def _get_client(self):
+  37 |         """دریافت کلاینت Google Sheets با OAuth (لاگین یک بار)"""
+  38 |         creds = None
+  39 |         creds_file = 'config/google_oauth_token.json'
+  40 |         
+  41 |         # بارگذاری token ذخیره شده قبلی
+  42 |         if os.path.exists(creds_file):
+  43 |             try:
+  44 |                 with open(creds_file, 'r') as f:
+  45 |                     creds_data = json.load(f)
+  46 |                 creds = Credentials.from_authorized_user_info(creds_data, self.SCOPE)
+  47 |             except Exception as e:
+  48 |                 print(f"⚠️ Error loading token: {e}")
+  49 |         
+  50 |         # اگر token معتبر نیست، لاگین بگیر
+  51 |         if not creds or not creds.valid:
+  52 |             if creds and creds.expired and creds.refresh_token:
+  53 |                 try:
+  54 |                     creds.refresh(Request())
+  55 |                     print("✅ Token refreshed")
+  56 |                 except Exception as e:
+  57 |                     print(f"⚠️ Token refresh failed: {e}")
+  58 |                     creds = None
+  59 |             
+  60 |             if not creds:
+  61 |                 print("\n" + "=" * 60)
+  62 |                 print("🔐 Google Login Required")
+  63 |                 print("=" * 60)
+  64 |                 print("A browser window will open. Please login to your Google account")
+  65 |                 print("and allow access to Google Sheets.\n")
+  66 |                 
+  67 |                 flow = InstalledAppFlow.from_client_config(self.CLIENT_CONFIG, self.SCOPE)
+  68 |                 creds = flow.run_local_server(port=0)
+  69 |                 
+  70 |                 # ذخیره token برای دفعات بعد
+  71 |                 os.makedirs('config', exist_ok=True)
+  72 |                 with open(creds_file, 'w') as f:
+  73 |                     creds_data = {
+  74 |                         'token': creds.token,
+  75 |                         'refresh_token': creds.refresh_token,
+  76 |                         'token_uri': creds.token_uri,
+  77 |                         'client_id': creds.client_id,
+  78 |                         'client_secret': creds.client_secret,
+  79 |                         'scopes': creds.scopes
+  80 |                     }
+  81 |                     json.dump(creds_data, f)
+  82 |                 print("✅ Credentials saved. You won't need to login again.")
+  83 |         
+  84 |         return gspread.authorize(creds)
+  85 |     
+  86 |     def _get_sheet(self):
+  87 |         """دریافت شیت"""
+  88 |         try:
+  89 |             sheet = self.client.open_by_url(self.SHEET_URL).sheet1
+  90 |         except Exception as e:
+  91 |             print(f"❌ Cannot open sheet: {e}")
+  92 |             print("\n💡 Make sure:")
+  93 |             print("   1. The SHEET_URL is correct")
+  94 |             print("   2. You have shared the sheet with your Google account")
+  95 |             raise
+  96 |         
+  97 |         # اضافه کردن هدرها اگر شیت خالی است
+  98 |         if not sheet.get_all_values():
+  99 |             headers = [
+ 100 |                 'lookup_key', 'place_id', 'name', 'phone', 'website', 'address',
+ 101 |                 'rating', 'reviews_count', 'email', 'instagram', 'telegram',
+ 102 |                 'meta_quality', 'sync_status', 'extracted_at', 'last_seen_at'
+ 103 |             ]
+ 104 |             sheet.append_row(headers)
+ 105 |             print("✅ Headers added to sheet")
+ 106 |         
+ 107 |         return sheet
+ 108 |     
+ 109 |     def _build_row_cache(self):
+ 110 |         """ساخت کش lookup_key → row number"""
+ 111 |         if self._row_cache is not None:
+ 112 |             return self._row_cache
+ 113 |         
+ 114 |         self._row_cache = {}
+ 115 |         all_data = self.sheet.get_all_values()
+ 116 |         
+ 117 |         for i, row in enumerate(all_data[1:], start=2):
+ 118 |             if row and len(row) > 0 and row[0]:
+ 119 |                 self._row_cache[row[0]] = i
+ 120 |         
+ 121 |         return self._row_cache
+ 122 |     
+ 123 |     def _generate_lookup_key(self, place_id: str, name: str, phone: str, website: str) -> str:
+ 124 |         if place_id:
+ 125 |             return place_id
+ 126 |         return f"{name}_{phone}_{website}".replace(" ", "_")[:100]
+ 127 |     
+ 128 |     def _calculate_quality(self, phone: str, website: str, email: str) -> str:
+ 129 |         score = 0
+ 130 |         if phone:
+ 131 |             score += 1
+ 132 |         if website:
+ 133 |             score += 1
+ 134 |         if email:
+ 135 |             score += 2
+ 136 |         if score >= 3:
+ 137 |             return "high"
+ 138 |         elif score >= 1:
+ 139 |             return "medium"
+ 140 |         return "low"
+ 141 |     
+ 142 |     def sync_pending(self, batch_size: int = 50):
+ 143 |         """همگام‌سازی بیزینس‌های pending"""
+ 144 |         print("=" * 60)
+ 145 |         print("🔄 Syncing to Google Sheets (OAuth)")
+ 146 |         print("=" * 60)
+ 147 |         
+ 148 |         with self.db._get_connection() as conn:
+ 149 |             cursor = conn.cursor()
+ 150 |             cursor.execute('''
+ 151 |                 SELECT 
+ 152 |                     b.id, b.place_id, b.name, b.phone, b.website, b.address,
+ 153 |                     b.rating, b.reviews_count, b.extracted_at, b.last_seen_at,
+ 154 |                     w.email, w.instagram, w.telegram
+ 155 |                 FROM businesses b
+ 156 |                 LEFT JOIN website_extractions w ON w.business_id = b.id
+ 157 |                 WHERE b.status = 'done' AND (b.sync_status IS NULL OR b.sync_status = 'pending')
+ 158 |                 ORDER BY b.id
+ 159 |                 LIMIT ?
+ 160 |             ''', (batch_size,))
+ 161 |             rows = cursor.fetchall()
+ 162 |         
+ 163 |         if not rows:
+ 164 |             print("✅ No pending businesses to sync")
+ 165 |             return
+ 166 |         
+ 167 |         print(f"📋 Found {len(rows)} pending businesses")
+ 168 |         
+ 169 |         row_cache = self._build_row_cache()
+ 170 |         rows_to_append = []
+ 171 |         rows_to_update = []
+ 172 |         business_ids = []
+ 173 |         
+ 174 |         for row in rows:
+ 175 |             business_id = row[0]
+ 176 |             place_id = row[1] or ""
+ 177 |             name = row[2] or ""
+ 178 |             phone = row[3] or ""
+ 179 |             website = row[4] or ""
+ 180 |             address = row[5] or ""
+ 181 |             rating = row[6] or ""
+ 182 |             reviews_count = row[7] or ""
+ 183 |             extracted_at = row[8] or ""
+ 184 |             last_seen_at = row[9] or ""
+ 185 |             email = row[10] or ""
+ 186 |             instagram = row[11] or ""
+ 187 |             telegram = row[12] or ""
+ 188 |             
+ 189 |             lookup_key = self._generate_lookup_key(place_id, name, phone, website)
+ 190 |             meta_quality = self._calculate_quality(phone, website, email)
+ 191 |             
+ 192 |             row_data = [
+ 193 |                 lookup_key, place_id, name, phone, website, address,
+ 194 |                 rating, reviews_count, email, instagram, telegram,
+ 195 |                 meta_quality, 'synced', extracted_at, last_seen_at
+ 196 |             ]
+ 197 |             
+ 198 |             existing_row = row_cache.get(lookup_key)
+ 199 |             if existing_row:
+ 200 |                 rows_to_update.append((existing_row, row_data))
+
+     ... (77 lines skipped) ...
+
+======================================================================
+📄 .\app\utils.py
+======================================================================
+   1 | # app/utils.py
+   2 | import re
+   3 | import time
+   4 | import random
+   5 | import logging
+   6 | from app.config import Config
+   7 | from playwright.sync_api import Page
+   8 | from typing import Optional
+   9 | 
+  10 | # شماره‌های نامعتبر (placeholder)
+  11 | INVALID_PHONES = [
+  12 |     '00000001490', '09999999776', '06162922139', '000000014901',
+  13 |     '02045495886', '06452020320', '05407725214', '00074420157',
+  14 |     '00544077806', '00611837084', '00420989416', '00155619241',
+  15 |     '00999999977', '00999999977'
+  16 | ]
+  17 | # تنظیم logging
+  18 | logging.basicConfig(
+  19 |     level=logging.INFO,
+  20 |     format='%(asctime)s - %(levelname)s - %(message)s',
+  21 |     handlers=[
+  22 |         logging.FileHandler(Config.LOG_FILE, encoding='utf-8'),
+  23 |         logging.StreamHandler()
+  24 |     ]
+  25 | )
+  26 | 
+  27 | # لاگ مخصوص خطاها
+  28 | error_logger = logging.getLogger('errors')
+  29 | error_handler = logging.FileHandler(Config.ERROR_LOG_FILE, encoding='utf-8')
+  30 | error_handler.setLevel(logging.ERROR)
+  31 | error_logger.addHandler(error_handler)
+  32 | 
+  33 | def log_info(message: str):
+  34 |     """لاگ اطلاعات عادی"""
+  35 |     logging.info(message)
+  36 | 
+  37 | def log_error(message: str):
+  38 |     """لاگ خطا"""
+  39 |     error_logger.error(message)
+  40 | 
+  41 | # ... بقیه توابع همان‌طور که هست ...
+  42 | def is_valid_phone(phone: str) -> bool:
+  43 |     """بررسی معتبر بودن شماره ایران"""
+  44 |     if not phone:
+  45 |         return False
+  46 |     
+  47 |     phone = re.sub(r'[\s\-]', '', phone)
+  48 |     
+  49 |     if phone in INVALID_PHONES:
+  50 |         return False
+  51 |     
+  52 |     # موبایل: 09xxxxxxxxx (11 رقم)
+  53 |     if phone.startswith('09') and len(phone) == 11:
+  54 |         return True
+  55 |     
+  56 |     # خط ثابت: 0xxxxxxxxxx (11 رقم)
+  57 |     if phone.startswith('0') and len(phone) == 11:
+  58 |         return True
+  59 |     
+  60 |     return False
+  61 | 
+  62 | def extract_phone(page: Page) -> str:
+  63 |     """استخراج شماره تلفن از صفحه"""
+  64 |     try:
+  65 |         # روش 1: لینک tel:
+  66 |         tel_link = page.locator('a[href^="tel:"]').first
+  67 |         if tel_link.count() > 0:
+  68 |             href = tel_link.get_attribute("href")
+  69 |             if href:
+  70 |                 phone = re.sub(r"tel:", "", href)
+  71 |                 phone = re.sub(r"[\s\-]", "", phone)
+  72 |                 if is_valid_phone(phone):
+  73 |                     return phone
+  74 |         
+  75 |         # روش 2: جستجوی مستقیم در صفحه
+  76 |         content = page.content()
+  77 |         patterns = [r'09\d{9}', r'0\d{10}']
+  78 |         for pattern in patterns:
+  79 |             matches = re.findall(pattern, content)
+  80 |             for phone in matches:
+  81 |                 if is_valid_phone(phone):
+  82 |                     return phone
+  83 |     except:
+  84 |         pass
+  85 |     
+  86 |     return ""
+  87 | 
+  88 | def extract_website(page: Page) -> str:
+  89 |     """استخراج وبسایت از صفحه"""
+  90 |     try:
+  91 |         link = page.locator('a[data-item-id="authority"]').first
+  92 |         if link.count() > 0:
+  93 |             href = link.get_attribute("href")
+  94 |             if href and "google.com" not in href and "tel:" not in href:
+  95 |                 return href
+  96 |     except:
+  97 |         pass
+  98 |     return ""
+  99 | 
+ 100 | def extract_address(page: Page) -> str:
+ 101 |     """استخراج آدرس از صفحه"""
+ 102 |     try:
+ 103 |         addr_btn = page.locator('button[data-item-id="address"]').first
+ 104 |         if addr_btn.count() > 0:
+ 105 |             return addr_btn.text_content()[:200] or ""
+ 106 |     except:
+ 107 |         pass
+ 108 |     return ""
+ 109 | 
+ 110 | def extract_rating(page: Page) -> str:
+ 111 |     """استخراج امتیاز از صفحه"""
+ 112 |     try:
+ 113 |         rating = page.locator('div[aria-label*="star"]').first
+ 114 |         if rating.count() > 0:
+ 115 |             text = rating.get_attribute('aria-label')
+ 116 |             match = re.search(r'(\d+(?:\.\d+)?)', text)
+ 117 |             if match:
+ 118 |                 return match.group(1)
+ 119 |     except:
+ 120 |         pass
+ 121 |     return ""
+ 122 | 
+ 123 | def extract_reviews_count(page: Page) -> str:
+ 124 |     """استخراج تعداد نظرات از صفحه"""
+ 125 |     try:
+ 126 |         reviews = page.locator('button[aria-label*="review"]').first
+ 127 |         if reviews.count() > 0:
+ 128 |             text = reviews.text_content()
+ 129 |             match = re.search(r'(\d+)', text)
+ 130 |             if match:
+ 131 |                 return match.group(1)
+ 132 |     except:
+ 133 |         pass
+ 134 |     return ""
+ 135 | 
+ 136 | def extract_place_id_from_url(url: str) -> str:
+ 137 |     """استخراج Place ID از URL گوگل مپ"""
+ 138 |     match = re.search(r'!1s([^!]+)', url)
+ 139 |     if match:
+ 140 |         return match.group(1)
+ 141 |     return ""
+ 142 | 
+ 143 | def accept_cookies(page: Page) -> bool:
+ 144 |     """Accept کردن کوکی‌های گوگل"""
+ 145 |     try:
+ 146 |         time.sleep(1)
+ 147 |         selectors = [
+ 148 |             'button:has-text("Accept all")',
+ 149 |             'button:has-text("Accept")',
+ 150 |             'button[jsname="Njthtb"]',
+ 151 |             'form button',
+ 152 |         ]
+ 153 |         for selector in selectors:
+ 154 |             try:
+ 155 |                 btn = page.locator(selector).first
+ 156 |                 if btn.count() > 0 and btn.is_visible(timeout=1500):
+ 157 |                     btn.click()
+ 158 |                     print("  🍪 Cookies accepted")
+ 159 |                     time.sleep(1.5)
+ 160 |                     return True
+ 161 |             except:
+ 162 |                 continue
+ 163 |         return False
+ 164 |     except:
+ 165 |         return False
+ 166 | 
+ 167 | def human_delay(min_sec: float = 1.0, max_sec: float = 2.0) -> None:
+ 168 |     """تأخیر تصادفی شبه انسان"""
+ 169 |     time.sleep(random.uniform(min_sec, max_sec))
+ 170 | 
+ 171 | def random_scroll_amount() -> int:
+ 172 |     """مقدار اسکرول تصادفی"""
+ 173 |     return random.randint(500, 1200)
+
+======================================================================
+📄 .\app\website_crawler.py
+======================================================================
+   1 | # app/website_crawler.py - MVP نهایی (Enrichment Layer)
+   2 | from playwright.sync_api import sync_playwright
+   3 | import time
+   4 | import re
+   5 | import random
+   6 | from urllib.parse import urljoin
+   7 | from datetime import datetime
+   8 | from app.database import Database
+   9 | from app.config import Config
+  10 | from app.utils import accept_cookies
+  11 | 
+  12 | class WebsiteCrawler:
+  13 |     """
+  14 |     Website Enrichment Layer MVP
+  15 |     فقط ایمیل، سوشال، تلفن اضافی، contact/about pages
+  16 |     """
+  17 | 
+  18 |     def __init__(self):
+  19 |         self.db = Database()
+  20 | 
+  21 |     # ========== extraction helpers ==========
+  22 |     def extract_emails(self, content: str) -> list:
+  23 |         pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+  24 |         matches = re.findall(pattern, content)
+  25 |         return list(set(matches))[:3]  # حداکثر 3 ایمیل
+  26 | 
+  27 |     def extract_instagram(self, content: str) -> str:
+  28 |         patterns = [
+  29 |             r'instagram\.com/([a-zA-Z0-9_.]+)',
+  30 |             r'instagr\.am/([a-zA-Z0-9_.]+)'
+  31 |         ]
+  32 |         for pattern in patterns:
+  33 |             match = re.search(pattern, content)
+  34 |             if match:
+  35 |                 return f"instagram.com/{match.group(1)}"
+  36 |         return ""
+  37 | 
+  38 |     def extract_telegram(self, content: str) -> str:
+  39 |         patterns = [
+  40 |             r't\.me/([a-zA-Z0-9_]+)',
+  41 |             r'telegram\.me/([a-zA-Z0-9_]+)'
+  42 |         ]
+  43 |         for pattern in patterns:
+  44 |             match = re.search(pattern, content)
+  45 |             if match:
+  46 |                 return f"t.me/{match.group(1)}"
+  47 |         return ""
+  48 | 
+  49 |     def extract_whatsapp(self, content: str) -> str:
+  50 |         match = re.search(r'wa\.me/(\d+)', content)
+  51 |         return f"wa.me/{match.group(1)}" if match else ""
+  52 | 
+  53 |     def extract_extra_phones(self, content: str, main_phone: str = "") -> str:
+  54 |         """شماره‌های اضافی (غیر از شماره اصلی گوگل مپ)"""
+  55 |         pattern = r'09\d{9}|0\d{10}'
+  56 |         matches = re.findall(pattern, content)
+  57 |         unique = list(set(matches))
+  58 |         if main_phone and main_phone in unique:
+  59 |             unique.remove(main_phone)
+  60 |         return ",".join(unique[:3])  # حداکثر 3 تا
+  61 | 
+  62 |     # ========== single business crawl ==========
+  63 |     def crawl_business(self, page, business) -> dict:
+  64 |         result = {
+  65 |             'email': '',
+  66 |             'instagram': '',
+  67 |             'telegram': '',
+  68 |             'whatsapp': '',
+  69 |             'extra_phones': '',
+  70 |             'contact_page_url': '',
+  71 |             'about_page_url': '',
+  72 |             'crawl_status': 'failed',
+  73 |             'crawl_error': ''
+  74 |         }
+  75 | 
+  76 |         website_url = business['website']
+  77 |         if not website_url or 'google.com' in website_url:
+  78 |             result['crawl_error'] = 'Invalid or google URL'
+  79 |             return result
+  80 | 
+  81 |         try:
+  82 |             print(f"  🌐 Crawling: {website_url}")
+  83 | 
+  84 |             # صفحه اصلی
+  85 |             page.goto(website_url, wait_until="domcontentloaded", timeout=30000)
+  86 |             time.sleep(2)
+  87 |             content = page.content()
+  88 | 
+  89 |             emails = self.extract_emails(content)
+  90 |             result['email'] = emails[0] if emails else ''
+  91 |             result['instagram'] = self.extract_instagram(content)
+  92 |             result['telegram'] = self.extract_telegram(content)
+  93 |             result['whatsapp'] = self.extract_whatsapp(content)
+  94 | 
+  95 |             # صفحات تماس و درباره
+  96 |             paths = ['/contact', '/contact-us', '/about', '/about-us', '/تماس-با-ما', '/درباره-ما']
+  97 |             for path in paths:
+  98 |                 try:
+  99 |                     full_url = urljoin(website_url, path)
+ 100 |                     page.goto(full_url, wait_until="domcontentloaded", timeout=15000)
+ 101 |                     time.sleep(1.5)
+ 102 |                     content = page.content()
+ 103 | 
+ 104 |                     if 'contact' in path or 'تماس' in path:
+ 105 |                         result['contact_page_url'] = full_url
+ 106 |                     if 'about' in path or 'درباره' in path:
+ 107 |                         result['about_page_url'] = full_url
+ 108 | 
+ 109 |                     if not result['email']:
+ 110 |                         emails2 = self.extract_emails(content)
+ 111 |                         result['email'] = emails2[0] if emails2 else ''
+ 112 |                     if not result['instagram']:
+ 113 |                         result['instagram'] = self.extract_instagram(content)
+ 114 |                     if not result['telegram']:
+ 115 |                         result['telegram'] = self.extract_telegram(content)
+ 116 |                     if not result['whatsapp']:
+ 117 |                         result['whatsapp'] = self.extract_whatsapp(content)
+ 118 | 
+ 119 |                 except Exception as e:
+ 120 |                     continue
+ 121 | 
+ 122 |             # استخراج شماره‌های اضافی (از کل محتوا)
+ 123 |             all_content = page.content()
+ 124 |             result['extra_phones'] = self.extract_extra_phones(all_content)
+ 125 |             result['crawl_status'] = 'done'
+ 126 | 
+ 127 |         except Exception as e:
+ 128 |             result['crawl_error'] = f"{type(e).__name__}: {str(e)[:100]}"
+ 129 |             print(f"  ⚠️ Crawl error: {result['crawl_error']}")
+ 130 | 
+ 131 |         return result
+ 132 | 
+ 133 |     # ========== main runner ==========
+ 134 |     def run(self, limit: int = None):
+ 135 |         print("=" * 60)
+ 136 |         print("📍 Website Crawler MVP (Enrichment Layer)")
+ 137 |         print("=" * 60)
+ 138 | 
+ 139 |         if limit is None:
+ 140 |             limit = Config.MAX_WEBSITES_TO_CRAWL
+ 141 |             print(f"📋 Using limit from Config: {limit}")
+ 142 | 
+ 143 |         with self.db._get_connection() as conn:
+ 144 |             cursor = conn.cursor()
+ 145 |             cursor.execute('''
+ 146 |                 SELECT id, name, website FROM businesses
+ 147 |                 WHERE website != '' AND website IS NOT NULL
+ 148 |                 AND status = 'done'
+ 149 |                 ORDER BY id
+ 150 |                 LIMIT ?
+ 151 |             ''', (limit,))
+ 152 |             businesses = [dict(row) for row in cursor.fetchall()]
+ 153 | 
+ 154 |         print(f"📋 Found {len(businesses)} businesses with website")
+ 155 | 
+ 156 |         if not businesses:
+ 157 |             print("⚠️ No businesses with website found!")
+ 158 |             return
+ 159 | 
+ 160 |         with sync_playwright() as p:
+ 161 |             browser = p.chromium.launch(
+ 162 |                 headless=Config.HEADLESS,
+ 163 |                 slow_mo=Config.SLOW_MO
+ 164 |             )
+ 165 |             page = browser.new_page()
+ 166 |             accept_cookies(page)
+ 167 | 
+ 168 |             for idx, biz in enumerate(businesses, 1):
+ 169 |                 print(f"\n🔍 [{idx}/{len(businesses)}] {biz['name'][:50]}...")
+ 170 |                 print(f"   Website: {biz['website']}")
+ 171 | 
+ 172 |                 result = self.crawl_business(page, biz)
+ 173 | 
+ 174 |                 if result['email']:
+ 175 |                     print(f"  📧 {result['email']}")
+ 176 |                 if result['instagram']:
+ 177 |                     print(f"  📷 {result['instagram']}")
+ 178 |                 if result['extra_phones']:
+ 179 |                     print(f"  📞 extra: {result['extra_phones']}")
+ 180 | 
+ 181 |                 # ذخیره در دیتابیس
+ 182 |                 self._save_extraction(biz['id'], result)
+ 183 | 
+ 184 |                 delay = random.uniform(*Config.DELAY_BETWEEN_BUSINESSES)
+ 185 |                 print(f"  ⏱️ Waiting {delay:.1f}s...")
+ 186 |                 time.sleep(delay)
+ 187 | 
+ 188 |             browser.close()
+ 189 | 
+ 190 |         self.db.close()
+ 191 |         print("\n✅ Website crawling MVP completed!")
+ 192 | 
+ 193 |     # ========== save to database ==========
+ 194 |     def _save_extraction(self, business_id: int, data: dict):
+ 195 |         with self.db._get_connection() as conn:
+ 196 |             cursor = conn.cursor()
+ 197 |             cursor.execute('''
+ 198 |                 INSERT INTO website_extractions
+ 199 |                 (business_id, email, instagram, telegram, whatsapp,
+ 200 |                  extra_phones, contact_page_url, about_page_url,
+
+     ... (20 lines skipped) ...
+
+======================================================================
+📄 .\check_stats.py
+======================================================================
+   1 | # check_stats.py
+   2 | from app.database import Database
+   3 | 
+   4 | db = Database()
+   5 | with db._get_connection() as conn:
+   6 |     cursor = conn.cursor()
+   7 |     
+   8 |     cursor.execute('SELECT COUNT(*) FROM businesses')
+   9 |     total = cursor.fetchone()[0]
+  10 |     
+  11 |     cursor.execute('SELECT COUNT(*) FROM businesses WHERE status = "done"')
+  12 |     done = cursor.fetchone()[0]
+  13 |     
+  14 |     cursor.execute('SELECT COUNT(*) FROM businesses WHERE data_source = "google_maps"')
+  15 |     data_source = cursor.fetchone()[0]
+  16 |     
+  17 |     cursor.execute('SELECT COUNT(*) FROM businesses WHERE last_seen_at IS NOT NULL')
+  18 |     last_seen = cursor.fetchone()[0]
+  19 |     
+  20 |     cursor.execute('SELECT COUNT(*) FROM businesses WHERE phone != "" AND phone IS NOT NULL')
+  21 |     phones = cursor.fetchone()[0]
+  22 |     
+  23 |     cursor.execute('SELECT COUNT(*) FROM businesses WHERE website != "" AND website IS NOT NULL')
+  24 |     websites = cursor.fetchone()[0]
+  25 |     
+  26 |     print('=' * 50)
+  27 |     print('📊 Current Database Stats')
+  28 |     print('=' * 50)
+  29 |     print(f'Total businesses: {total}')
+  30 |     print(f'Done: {done}')
+  31 |     print(f'With data_source: {data_source}')
+  32 |     print(f'With last_seen_at: {last_seen}')
+  33 |     print(f'With phone: {phones}')
+  34 |     print(f'With website: {websites}')
+  35 |     
+  36 |     # نمونه بیزینس‌ها
+  37 |     cursor.execute('SELECT name, phone, website, data_source, last_seen_at FROM businesses LIMIT 5')
+  38 |     print('\n📋 Sample businesses:')
+  39 |     for row in cursor.fetchall():
+  40 |         name = row[0][:35] if row[0] else 'N/A'
+  41 |         phone = row[1][:15] if row[1] else 'N/A'
+  42 |         print(f'  - {name} | phone: {phone} | source: {row[3]}')
+  43 | 
+  44 | db.close()
+
+======================================================================
+📄 .\create_simple_management.py
+======================================================================
+   1 | # python create_simple_management.py
+   2 | import pandas as pd
+   3 | import os
+   4 | from datetime import datetime
+   5 | 
+   6 | def create_simple_management():
+   7 |     """ایجاد فایل Excel مدیریت ساده و خوانا"""
+   8 |     
+   9 |     output_path = 'input/management.xlsx'
+  10 |     os.makedirs('input', exist_ok=True)
+  11 |     
+  12 |     # ========== یک شیت واحد با همه تنظیمات ==========
+  13 |     data = {
+  14 |         'ردیف': range(1, 14),
+  15 |         'تنظیمات': [
+  16 |             '🕐 ساعت شروع',
+  17 |             '🕐 ساعت پایان',
+  18 |             '📅 تاریخ شروع (شمسی)',
+  19 |             '📅 تاریخ پایان (شمسی)',
+  20 |             '📆 روزهای اجرا',
+  21 |             '🔍 حداکثر سرچ در هر شب',
+  22 |             '⏱️ تأخیر بین جستجوها (ثانیه)',
+  23 |             '⏱️ تأخیر بین بیزینس‌ها (ثانیه)',
+  24 |             '🧵 تعداد نخ همزمان',
+  25 |             '🌐 مسیر فایل پروکسی',
+  26 |             '🤖 API Key کپچا',
+  27 |             '⏸️ وضعیت Pause/Resume',
+  28 |             '📊 حداکثر بیزینس در هر جستجو'
+  29 |         ],
+  30 |         'مقدار': [
+  31 |             '08:00',
+  32 |             '23:00',
+  33 |             '1403-01-01',
+  34 |             '1403-12-29',
+  35 |             'شنبه,یکشنبه,دوشنبه,سه‌شنبه,چهارشنبه',
+  36 |             '50',
+  37 |             '30-60',
+  38 |             '5-10',
+  39 |             '2',
+  40 |             'input/proxies.txt',
+  41 |             '',
+  42 |             'resume',
+  43 |             '50'
+  44 |         ],
+  45 |         'توضیحات': [
+  46 |             'ساعت شروع کار ربات (فقط بین این ساعت اجرا می‌شود)',
+  47 |             'ساعت پایان کار ربات',
+  48 |             'تاریخ شروع به فرمت 1403-01-01 (اختیاری)',
+  49 |             'تاریخ پایان به فرمت 1403-12-29 (اختیاری)',
+  50 |             'روزهایی که ربات کار کند - با کاما جدا کنید',
+  51 |             'حداکثر تعداد جستجو در هر شب',
+  52 |             'مثال: 30-60 یعنی بین 30 تا 60 ثانیه',
+  53 |             'مثال: 5-10 یعنی بین 5 تا 10 ثانیه',
+  54 |             'تعداد پردازش همزمان (پیشنهاد: 1 یا 2)',
+  55 |             'مسیر فایل حاوی لیست پروکسی‌ها (یک خط یک پروکسی)',
+  56 |             'API Key برای سرویس حل کپچا (در صورت نیاز)',
+  57 |             'pause=توقف، resume=ادامه - قابل تغییر بدون ریستارت',
+  58 |             'حداکثر بیزینس جمع‌آوری شده در هر جستجو'
+  59 |         ]
+  60 |     }
+  61 |     
+  62 |     df = pd.DataFrame(data)
+  63 |     
+  64 |     # ذخیره در Excel با تنظیمات ظاهری مناسب
+  65 |     with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+  66 |         df.to_excel(writer, sheet_name='Config', index=False)
+  67 |     
+  68 |     # تنظیم ظاهر Excel
+  69 |     from openpyxl import load_workbook
+  70 |     from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
+  71 |     
+  72 |     wb = load_workbook(output_path)
+  73 |     ws = wb['Config']
+  74 |     
+  75 |     # تنظیم عرض ستون‌ها
+  76 |     ws.column_dimensions['A'].width = 6   # ردیف
+  77 |     ws.column_dimensions['B'].width = 35  # تنظیمات
+  78 |     ws.column_dimensions['C'].width = 25  # مقدار
+  79 |     ws.column_dimensions['D'].width = 55  # توضیحات
+  80 |     
+  81 |     # تنظیم ارتفاع ردیف‌ها
+  82 |     for row in ws.iter_rows(min_row=1, max_row=ws.max_row):
+  83 |         ws.row_dimensions[row[0].row].height = 25
+  84 |     
+  85 |     # استایل برای هدر
+  86 |     header_font = Font(bold=True, size=12, color="FFFFFF")
+  87 |     header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+  88 |     header_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+  89 |     
+  90 |     for cell in ws[1]:
+  91 |         cell.font = header_font
+  92 |         cell.fill = header_fill
+  93 |         cell.alignment = header_alignment
+  94 |     
+  95 |     # استایل برای سلول‌های معمولی
+  96 |     thin_border = Border(
+  97 |         left=Side(style='thin'),
+  98 |         right=Side(style='thin'),
+  99 |         top=Side(style='thin'),
+ 100 |         bottom=Side(style='thin')
+ 101 |     )
+ 102 |     
+ 103 |     for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
+ 104 |         for cell in row:
+ 105 |             cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
+ 106 |             cell.border = thin_border
+ 107 |     
+ 108 |     # رنگ‌بندی ردیف‌ها (یک در میان)
+ 109 |     for i, row in enumerate(ws.iter_rows(min_row=2, max_row=ws.max_row), start=2):
+ 110 |         if i % 2 == 0:
+ 111 |             fill = PatternFill(start_color="E9F0F9", end_color="E9F0F9", fill_type="solid")
+ 112 |             for cell in row:
+ 113 |                 cell.fill = fill
+ 114 |     
+ 115 |     wb.save(output_path)
+ 116 |     
+ 117 |     print("=" * 60)
+ 118 |     print("✅ فایل مدیریت با موفقیت ساخته شد!")
+ 119 |     print("=" * 60)
+ 120 |     print(f"📁 مسیر: {output_path}")
+ 121 |     print(f"📄 شیت: Management")
+ 122 |     print("\n📋 تنظیمات موجود:")
+ 123 |     print("   ✅ ساعت شروع/پایان")
+ 124 |     print("   ✅ تاریخ شمسی از و تا")
+ 125 |     print("   ✅ روزهای اجرا")
+ 126 |     print("   ✅ حداکثر سرچ در هر شب")
+ 127 |     print("   ✅ تأخیرها (بین جستجوها و بین بیزینس‌ها)")
+ 128 |     print("   ✅ تعداد نخ همزمان")
+ 129 |     print("   ✅ مسیر پروکسی")
+ 130 |     print("   ✅ API Key کپچا")
+ 131 |     print("   ✅ وضعیت Pause/Resume")
+ 132 |     print("   ✅ حداکثر بیزینس در هر جستجو")
+ 133 |     print("=" * 60)
+ 134 | 
+ 135 | if __name__ == "__main__":
+ 136 |     create_simple_management()
+
+======================================================================
+📄 .\debug_db.py
+======================================================================
+   1 | # debug_db.py
+   2 | import sqlite3
+   3 | from datetime import datetime, timedelta
+   4 | from app.config import Config
+   5 | 
+   6 | # ========== تنظیمات ==========
+   7 | PROCESSING_TIMEOUT_MINUTES = 10  # 10 دقیقه timeout برای processing
+   8 | # =============================
+   9 | 
+  10 | def get_db_connection():
+  11 |     """دریافت اتصال دیتابیس"""
+  12 |     return sqlite3.connect(Config.DATABASE_PATH)
+  13 | 
+  14 | def ensure_schema():
+  15 |     """اطمینان از وجود schema صحیح با updated_at NOT NULL"""
+  16 |     with get_db_connection() as conn:
+  17 |         cursor = conn.cursor()
+  18 |         
+  19 |         # بررسی و اصلاح ستون updated_at
+  20 |         cursor.execute("PRAGMA table_info(businesses)")
+  21 |         columns = [col[1] for col in cursor.fetchall()]
+  22 |         
+  23 |         if 'updated_at' not in columns:
+  24 |             cursor.execute("ALTER TABLE businesses ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+  25 |             print("✅ Added updated_at column")
+  26 |         
+  27 |         # به‌روزرسانی updated_at برای رکوردهای null
+  28 |         cursor.execute("UPDATE businesses SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL")
+  29 |         conn.commit()
+  30 | 
+  31 | def show_stats():
+  32 |     """نمایش آمار سریع (--stats)"""
+  33 |     with get_db_connection() as conn:
+  34 |         cursor = conn.cursor()
+  35 |         
+  36 |         # آمار کلی
+  37 |         cursor.execute("SELECT COUNT(*) FROM businesses")
+  38 |         total = cursor.fetchone()[0]
+  39 |         
+  40 |         cursor.execute("SELECT status, COUNT(*) FROM businesses GROUP BY status")
+  41 |         statuses = {row[0]: row[1] for row in cursor.fetchall()}
+  42 |         
+  43 |         cursor.execute("SELECT COUNT(*) FROM businesses WHERE phone != '' AND phone IS NOT NULL")
+  44 |         phones = cursor.fetchone()[0]
+  45 |         
+  46 |         cursor.execute("SELECT COUNT(*) FROM businesses WHERE website != '' AND website IS NOT NULL")
+  47 |         websites = cursor.fetchone()[0]
+  48 |         
+  49 |         print("=" * 40)
+  50 |         print("📊 QUICK STATS")
+  51 |         print("=" * 40)
+  52 |         print(f"Total:     {total}")
+  53 |         print(f"Done:      {statuses.get('done', 0)}")
+  54 |         print(f"Failed:    {statuses.get('failed', 0)}")
+  55 |         print(f"Pending:   {statuses.get('pending', 0)}")
+  56 |         print(f"Processing:{statuses.get('processing', 0)}")
+  57 |         print(f"Phones:    {phones}")
+  58 |         print(f"Websites:  {websites}")
+  59 |         print("=" * 40)
+  60 | 
+  61 | def show_full_status():
+  62 |     """نمایش وضعیت کامل دیتابیس"""
+  63 |     
+  64 |     ensure_schema()
+  65 |     
+  66 |     with get_db_connection() as conn:
+  67 |         cursor = conn.cursor()
+  68 |         
+  69 |         print("=" * 60)
+  70 |         print("📊 DATABASE HEALTH CHECK")
+  71 |         print("=" * 60)
+  72 |         print(f"Database: {Config.DATABASE_PATH}")
+  73 |         print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+  74 |         print(f"Processing timeout: {PROCESSING_TIMEOUT_MINUTES} minutes")
+  75 |         print("=" * 60)
+  76 |         
+  77 |         # 1. آمار کلی
+  78 |         cursor.execute("SELECT COUNT(*) FROM businesses")
+  79 |         total = cursor.fetchone()[0]
+  80 |         print(f"\n📈 TOTAL BUSINESSES: {total}")
+  81 |         
+  82 |         # 2. وضعیت‌ها
+  83 |         cursor.execute("SELECT status, COUNT(*) FROM businesses GROUP BY status")
+  84 |         print("\n📊 STATUS BREAKDOWN:")
+  85 |         for row in cursor.fetchall():
+  86 |             print(f"   {row[0]}: {row[1]}")
+  87 |         
+  88 |         # 3. بیزینس‌های stuck در processing (با timeout)
+  89 |         timeout_time = datetime.now() - timedelta(minutes=PROCESSING_TIMEOUT_MINUTES)
+  90 |         cursor.execute("""
+  91 |             SELECT COUNT(*) FROM businesses 
+  92 |             WHERE status = 'processing' 
+  93 |             AND datetime(updated_at) < datetime(?)
+  94 |         """, (timeout_time.isoformat(),))
+  95 |         stuck = cursor.fetchone()[0]
+  96 |         
+  97 |         if stuck > 0:
+  98 |             print(f"\n⚠️ STUCK PROCESSING (> {PROCESSING_TIMEOUT_MINUTES} min): {stuck}")
+  99 |             cursor.execute("""
+ 100 |                 SELECT name, slug, updated_at FROM businesses 
+ 101 |                 WHERE status = 'processing' 
+ 102 |                 AND datetime(updated_at) < datetime(?)
+ 103 |                 LIMIT 5
+ 104 |             """, (timeout_time.isoformat(),))
+ 105 |             for row in cursor.fetchall():
+ 106 |                 print(f"   - {row[0]} (last: {row[2]})")
+ 107 |         
+ 108 |         # 4. بیزینس‌های failed
+ 109 |         cursor.execute("SELECT COUNT(*) FROM businesses WHERE status = 'failed'")
+ 110 |         failed = cursor.fetchone()[0]
+ 111 |         
+ 112 |         if failed > 0:
+ 113 |             print(f"\n❌ FAILED BUSINESSES: {failed}")
+ 114 |             cursor.execute("""
+ 115 |                 SELECT name, retry_count, last_error, updated_at 
+ 116 |                 FROM businesses WHERE status = 'failed' 
+ 117 |                 LIMIT 5
+ 118 |             """)
+ 119 |             for row in cursor.fetchall():
+ 120 |                 error_msg = row[2][:50] if row[2] else 'N/A'
+ 121 |                 print(f"   - {row[0]} (retry: {row[1]}/3) - {error_msg}")
+ 122 |         
+ 123 |         # 5. کیفیت داده
+ 124 |         cursor.execute("SELECT COUNT(*) FROM businesses WHERE phone != '' AND phone IS NOT NULL")
+ 125 |         phones = cursor.fetchone()[0]
+ 126 |         cursor.execute("SELECT COUNT(*) FROM businesses WHERE website != '' AND website IS NOT NULL")
+ 127 |         websites = cursor.fetchone()[0]
+ 128 |         
+ 129 |         print(f"\n📞 DATA QUALITY:")
+ 130 |         print(f"   Phone found: {phones} ({phones/total*100:.0f}%)" if total > 0 else "   Phone found: 0")
+ 131 |         print(f"   Website found: {websites} ({websites/total*100:.0f}%)" if total > 0 else "   Website found: 0")
+ 132 |         
+ 133 |         # 6. آخرین پردازش‌ها
+ 134 |         print(f"\n🕐 LAST 5 PROCESSED:")
+ 135 |         cursor.execute("""
+ 136 |             SELECT name, status, updated_at 
+ 137 |             FROM businesses 
+ 138 |             WHERE status IN ('done', 'failed')
+ 139 |             ORDER BY updated_at DESC 
+ 140 |             LIMIT 5
+ 141 |         """)
+ 142 |         for row in cursor.fetchall():
+ 143 |             print(f"   - {row[0][:35]} ... {row[1]} ({row[2]})")
+ 144 |         
+ 145 |         print("\n" + "=" * 60)
+ 146 |         print("✅ HEALTH CHECK COMPLETED")
+ 147 |         print("=" * 60)
+ 148 | 
+ 149 | def fix_stuck_processing():
+ 150 |     """رفع بیزینس‌های stuck در processing (فقط timeout شده‌ها)"""
+ 151 |     
+ 152 |     timeout_time = datetime.now() - timedelta(minutes=PROCESSING_TIMEOUT_MINUTES)
+ 153 |     
+ 154 |     with get_db_connection() as conn:
+ 155 |         cursor = conn.cursor()
+ 156 |         
+ 157 |         # فقط those که واقعاً stuck شده‌اند
+ 158 |         cursor.execute("""
+ 159 |             SELECT COUNT(*) FROM businesses 
+ 160 |             WHERE status = 'processing' 
+ 161 |             AND datetime(updated_at) < datetime(?)
+ 162 |         """, (timeout_time.isoformat(),))
+ 163 |         stuck_count = cursor.fetchone()[0]
+ 164 |         
+ 165 |         if stuck_count == 0:
+ 166 |             print("✅ No stuck processing jobs found")
+ 167 |             return 0
+ 168 |         
+ 169 |         print(f"🔧 Found {stuck_count} stuck processing jobs (older than {PROCESSING_TIMEOUT_MINUTES} minutes)")
+ 170 |         
+ 171 |         cursor.execute("""
+ 172 |             UPDATE businesses 
+ 173 |             SET status = 'pending', 
+ 174 |                 last_error = 'Reset by admin (timeout)',
+ 175 |                 updated_at = ?
+ 176 |             WHERE status = 'processing' 
+ 177 |             AND datetime(updated_at) < datetime(?)
+ 178 |         """, (datetime.now().isoformat(), timeout_time.isoformat()))
+ 179 |         
+ 180 |         conn.commit()
+ 181 |         count = cursor.rowcount
+ 182 |         
+ 183 |         print(f"✅ Reset {count} stuck processing jobs to pending")
+ 184 |         return count
+ 185 | 
+ 186 | def show_failed_details():
+ 187 |     """نمایش جزئیات کامل بیزینس‌های failed"""
+ 188 |     with get_db_connection() as conn:
+ 189 |         cursor = conn.cursor()
+ 190 |         cursor.execute("""
+ 191 |             SELECT name, retry_count, last_error, updated_at, slug
+ 192 |             FROM businesses 
+ 193 |             WHERE status = 'failed'
+ 194 |             ORDER BY updated_at DESC
+ 195 |         """)
+ 196 |         
+ 197 |         rows = cursor.fetchall()
+ 198 |         
+ 199 |         if not rows:
+ 200 |             print("✅ No failed businesses found")
+
+     ... (86 lines skipped) ...
+
+======================================================================
+📄 .\run.py
+======================================================================
+   1 | # run.py
+   2 | import sys
+   3 | import os
+   4 | 
+   5 | sys.path.insert(0, os.path.dirname(__file__))
+   6 | 
+   7 | from app.config import Config
+   8 | from app.main_orchestrator import main
+   9 | 
+  10 | if __name__ == "__main__":
+  11 |     # بررسی مجوز اجرا
+  12 |     if not Config.is_execution_allowed():
+  13 |         print("⏸️ Execution not allowed. Exiting.")
+  14 |         sys.exit(0)
+  15 |     
+  16 |     main()
+
+======================================================================
+📄 .\show_structure.py
+======================================================================
+   1 | # show_structure.py - نسخه کامل بدون حذف فایل‌ها
+   2 | #use python show_structure.py | Out-File -FilePath project_structure.txt -Encoding UTF8
+   3 | import os
+   4 | from pathlib import Path
+   5 | 
+   6 | def show_structure(base_path='.', indent=0, max_depth=4, show_all=True):
+   7 |     """نمایش ساختار پوشه‌ها به صورت درختی"""
+   8 |     if indent > max_depth:
+   9 |         return
+  10 |     
+  11 |     try:
+  12 |         items = sorted(Path(base_path).iterdir(), key=lambda x: (not x.is_dir(), x.name))
+  13 |     except PermissionError:
+  14 |         return
+  15 |     
+  16 |     for item in items:
+  17 |         # فقط پوشه‌ها و فایل‌های پایتون را نشان بده
+  18 |         if item.is_dir():
+  19 |             # پوشه‌های خاص را حذف نکن
+  20 |             prefix = '    ' * indent
+  21 |             print(f"{prefix}📁 {item.name}/")
+  22 |             show_structure(item, indent + 1, max_depth, show_all)
+  23 |         elif item.suffix == '.py':
+  24 |             prefix = '    ' * indent
+  25 |             print(f"{prefix}📄 {item.name}")
+  26 |         elif show_all and item.suffix in ['.json', '.xlsx', '.db', '.txt', '.md']:
+  27 |             prefix = '    ' * indent
+  28 |             print(f"{prefix}📄 {item.name}")
+  29 | 
+  30 | def show_file_content(file_path):
+  31 |     """نمایش محتوای یک فایل"""
+  32 |     if not os.path.exists(file_path):
+  33 |         print(f"❌ فایل پیدا نشد: {file_path}")
+  34 |         return
+  35 |     
+  36 |     print(f"\n{'='*70}")
+  37 |     print(f"📄 {file_path}")
+  38 |     print('='*70)
+  39 |     
+  40 |     try:
+  41 |         with open(file_path, 'r', encoding='utf-8') as f:
+  42 |             lines = f.readlines()
+  43 |         
+  44 |         # نمایش حداکثر 200 خط (برای جلوگیری از زیاد شدن خروجی)
+  45 |         max_lines = 200
+  46 |         total_lines = len(lines)
+  47 |         
+  48 |         for i, line in enumerate(lines[:max_lines], 1):
+  49 |             # حذف کاراکترهای خاص از انتهای خط
+  50 |             clean_line = line.rstrip('\n\r')
+  51 |             print(f"{i:4d} | {clean_line}")
+  52 |         
+  53 |         if total_lines > max_lines:
+  54 |             print(f"\n     ... ({total_lines - max_lines} lines skipped) ...")
+  55 |             
+  56 |     except Exception as e:
+  57 |         print(f"⚠️ خطا در خواندن فایل: {e}")
+  58 | 
+  59 | def show_all_files_content(base_path='.', max_depth=3):
+  60 |     """نمایش محتوای همه فایل‌های پایتون"""
+  61 |     py_files = []
+  62 |     other_files = []
+  63 |     
+  64 |     for root, dirs, files in os.walk(base_path):
+  65 |         # محاسبه عمق پوشه
+  66 |         depth = root.replace(base_path, '').count(os.sep)
+  67 |         if depth > max_depth:
+  68 |             continue
+  69 |         
+  70 |         # حذف پوشه‌هایی که نمی‌خواهیم وارد شویم
+  71 |         dirs[:] = [d for d in dirs if d not in ['__pycache__', '.vscode', 'logs', 'screenshots', 'checkpoints']]
+  72 |         
+  73 |         for file in files:
+  74 |             file_path = os.path.join(root, file)
+  75 |             if file.endswith('.py'):
+  76 |                 py_files.append(file_path)
+  77 |             elif file.endswith('.json') and 'temp' not in file:
+  78 |                 other_files.append(file_path)
+  79 |     
+  80 |     # نمایش فایل‌های پایتون
+  81 |     print("\n" + "="*70)
+  82 |     print("📄 فایل‌های پایتون:")
+  83 |     print("="*70)
+  84 |     
+  85 |     for file_path in sorted(py_files):
+  86 |         show_file_content(file_path)
+  87 |     
+  88 |     # نمایش فایل‌های JSON مهم (اختیاری)
+  89 |     if other_files:
+  90 |         print("\n" + "="*70)
+  91 |         print("📄 فایل‌های JSON مهم:")
+  92 |         print("="*70)
+  93 |         for file_path in sorted(other_files):
+  94 |             if 'phase3_output' in file_path or 'phase4_result' in file_path or 'final_output' in file_path:
+  95 |                 show_file_content(file_path)
+  96 | 
+  97 | def show_full_structure():
+  98 |     """نمایش کامل ساختار و محتوا"""
+  99 |     print("="*70)
+ 100 |     print("📁 Google Maps Scraper - کاملترین نمایش ساختار")
+ 101 |     print("="*70)
+ 102 |     
+ 103 |     # نمایش ساختار پوشه‌ها
+ 104 |     print("\n📁 ساختار پروژه:")
+ 105 |     print("-"*50)
+ 106 |     show_structure('.', max_depth=3, show_all=False)
+ 107 |     
+ 108 |     # نمایش فایل‌های پیکربندی مهم
+ 109 |     print("\n\n📋 فایل‌های مهم خارج از پوشه app:")
+ 110 |     print("-"*50)
+ 111 |     
+ 112 |     important_files = ['run.py', 'requirements.txt', 'show_structure.py']
+ 113 |     for file in important_files:
+ 114 |         if os.path.exists(file):
+ 115 |             print(f"   ✅ {file}")
+ 116 |         else:
+ 117 |             print(f"   ❌ {file} (ندارد)")
+ 118 |     
+ 119 |     # نمایش همه محتوای فایل‌های پایتون
+ 120 |     show_all_files_content('.', max_depth=2)
+ 121 |     
+ 122 |     print("\n" + "="*70)
+ 123 |     print("✅ نمایش کامل ساختار به پایان رسید")
+ 124 |     print("="*70)
+ 125 | 
+ 126 | if __name__ == "__main__":
+ 127 |     # ذخیره خروجی در فایل
+ 128 |     import sys
+ 129 |     
+ 130 |     # اگر آرگومان --save داده شد، خروجی را در فایل ذخیره کن
+ 131 |     if '--save' in sys.argv:
+ 132 |         output_file = 'project_structure_full.txt'
+ 133 |         with open(output_file, 'w', encoding='utf-8') as f:
+ 134 |             # ذخیره stdout اصلی
+ 135 |             original_stdout = sys.stdout
+ 136 |             sys.stdout = f
+ 137 |             show_full_structure()
+ 138 |             sys.stdout = original_stdout
+ 139 |         print(f"✅ خروجی در فایل {output_file} ذخیره شد")
+ 140 |     else:
+ 141 |         show_full_structure()
+
+======================================================================
+📄 فایل‌های JSON مهم:
+======================================================================
+
+======================================================================
+📄 .\output\phase3_output.json
+======================================================================
+   1 | {
+   2 |   "query": "بوش فروشگاه لوازم خانگی در نارمک",
+   3 |   "total": 5,
+   4 |   "businesses": [
+   5 |     {
+   6 |       "slug": "bosch+support+tehran",
+   7 |       "name": "bosch support tehran",
+   8 |       "clean_href": "https://www.google.com/maps/place/bosch+support+tehran/data=!4m7!3m6!1s0x3f8e03d0f9af49bd:0x4713f83b8929ac0c!8m2!3d35.7399737!4d51.4909649!16s%2Fg%2F11ffh6c5_1!19sChIJvUmv-dADjj8RDKwpiTv4E0c",
+   9 |       "raw_href": "https://www.google.com/maps/place/bosch+support+tehran/data=!4m7!3m6!1s0x3f8e03d0f9af49bd:0x4713f83b8929ac0c!8m2!3d35.7399737!4d51.4909649!16s%2Fg%2F11ffh6c5_1!19sChIJvUmv-dADjj8RDKwpiTv4E0c?authuser=0&hl=en&rclk=1"
+  10 |     },
+  11 |     {
+  12 |       "slug": "BOSCH",
+  13 |       "name": "BOSCH",
+  14 |       "clean_href": "https://www.google.com/maps/place/BOSCH/data=!4m7!3m6!1s0x3f8e03e731056a53:0x2026068c7c93e43c!8m2!3d35.7334616!4d51.4399931!16s%2Fg%2F11g9d2gfqj!19sChIJU2oFMecDjj8RPOSTfIwGJiA",
+  15 |       "raw_href": "https://www.google.com/maps/place/BOSCH/data=!4m7!3m6!1s0x3f8e03e731056a53:0x2026068c7c93e43c!8m2!3d35.7334616!4d51.4399931!16s%2Fg%2F11g9d2gfqj!19sChIJU2oFMecDjj8RPOSTfIwGJiA?authuser=0&hl=en&rclk=1"
+  16 |     },
+  17 |     {
+  18 |       "slug": "Bosch+Iran+Store",
+  19 |       "name": "Bosch Iran Store",
+  20 |       "clean_href": "https://www.google.com/maps/place/Bosch+Iran+Store/data=!4m7!3m6!1s0x3f8e021bfc9b4935:0x704bf5d6c308300f!8m2!3d35.7237663!4d51.4185903!16s%2Fg%2F11c5spt7jb!19sChIJNUmb_BsCjj8RDzAIw9b1S3A",
+  21 |       "raw_href": "https://www.google.com/maps/place/Bosch+Iran+Store/data=!4m7!3m6!1s0x3f8e021bfc9b4935:0x704bf5d6c308300f!8m2!3d35.7237663!4d51.4185903!16s%2Fg%2F11c5spt7jb!19sChIJNUmb_BsCjj8RDzAIw9b1S3A?authuser=0&hl=en&rclk=1"
+  22 |     },
+  23 |     {
+  24 |       "slug": "%D8%AE%D8%A7%D9%86%D9%87+%D8%A8%D9%88%D8%B4%E2%80%AD",
+  25 |       "name": "خانه بوش",
+  26 |       "clean_href": "https://www.google.com/maps/place/%D8%AE%D8%A7%D9%86%D9%87+%D8%A8%D9%88%D8%B4%E2%80%AD/data=!4m7!3m6!1s0x3f8de51a7772a26f:0xfdc5c77342dd9ed!8m2!3d35.7554884!4d51.4471442!16s%2Fg%2F11s9m461sp!19sChIJb6JydxrljT8R7dktNHdc3A8",
+  27 |       "raw_href": "https://www.google.com/maps/place/%D8%AE%D8%A7%D9%86%D9%87+%D8%A8%D9%88%D8%B4%E2%80%AD/data=!4m7!3m6!1s0x3f8de51a7772a26f:0xfdc5c77342dd9ed!8m2!3d35.7554884!4d51.4471442!16s%2Fg%2F11s9m461sp!19sChIJb6JydxrljT8R7dktNHdc3A8?authuser=0&hl=en&rclk=1"
+  28 |     },
+  29 |     {
+  30 |       "slug": "%D9%85%D8%B1%DA%A9%D8%B2%DB%8C+%D8%A8%D9%88%D8%B4+%D8%B3%DB%8C%D9%87%D8%A7%D9%88%DB%8C%E2%80%AD",
+  31 |       "name": "مرکزی بوش سیهاوی",
+  32 |       "clean_href": "https://www.google.com/maps/place/%D9%85%D8%B1%DA%A9%D8%B2%DB%8C+%D8%A8%D9%88%D8%B4+%D8%B3%DB%8C%D9%87%D8%A7%D9%88%DB%8C%E2%80%AD/data=!4m7!3m6!1s0x3f8e03d30f017475:0xca08a7529aa2d9a!8m2!3d35.7325037!4d51.4397335!16s%2Fg%2F11kpgy4r60!19sChIJdXQBD9MDjj8Rmi2qKXWKoAw",
+  33 |       "raw_href": "https://www.google.com/maps/place/%D9%85%D8%B1%DA%A9%D8%B2%DB%8C+%D8%A8%D9%88%D8%B4+%D8%B3%DB%8C%D9%87%D8%A7%D9%88%DB%8C%E2%80%AD/data=!4m7!3m6!1s0x3f8e03d30f017475:0xca08a7529aa2d9a!8m2!3d35.7325037!4d51.4397335!16s%2Fg%2F11kpgy4r60!19sChIJdXQBD9MDjj8Rmi2qKXWKoAw?authuser=0&hl=en&rclk=1"
+  34 |     }
+  35 |   ],
+  36 |   "timestamp": "2026-05-23 12:23:02"
+  37 | }
+
+======================================================================
+📄 .\output\phase4_result.json
+======================================================================
+   1 | {
+   2 |   "total": 50,
+   3 |   "businesses": [
+   4 |     {
+   5 |       "name": "فروشگاه لوازم خانگی مدرن",
+   6 |       "phone": "09911234512",
+   7 |       "website": "",
+   8 |       "address": "شهریار، فروشگاه مدرن شهریار، جنب پل زیر گذر قائم، مجتمع تجاری فیروزه، طبقه همکف، پلاک ۱۴۸،, Iran"
+   9 |     },
+  10 |     {
+  11 |       "name": "Household appliances statue (J s)",
+  12 |       "phone": "02165325281",
+  13 |       "website": "",
+  14 |       "address": "Tehran Province, Shahriar، شهرک وائین، بلوار امام بین ۵ و ۷ پلاک ۵۱۷، بعثت 2, Iran"
+  15 |     },
+  16 |     {
+  17 |       "name": "لوازم خانگی ریاحی",
+  18 |       "phone": "02165257858",
+  19 |       "website": "",
+  20 |       "address": "Tehran Province, Shahriar، شهریار،، M354+53W, Iran"
+  21 |     },
+  22 |     {
+  23 |       "name": "لوازم خانگی باوان",
+  24 |       "phone": "09017321734",
+  25 |       "website": "",
+  26 |       "address": "M343+J7V, Shahriar, Tehran Province, Iran"
+  27 |     },
+  28 |     {
+  29 |       "name": "Snowa Store",
+  30 |       "phone": "09129287040",
+  31 |       "website": "http://www.instagram.com/snowaco.ir",
+  32 |       "address": "Tehran Province, Shahriar، Andisheh Town Phase 3, Valie Asr, No. 188, Iran"
+  33 |     },
+  34 |     {
+  35 |       "name": "یخچال سازی رویال",
+  36 |       "phone": "02165326120",
+  37 |       "website": "",
+  38 |       "address": "Shahriar, گسترش نبش مهر دهم, M2FQ+P3J, Iran"
+  39 |     },
+  40 |     {
+  41 |       "name": "یخچال فریزر امرسان",
+  42 |       "phone": "09198082788",
+  43 |       "website": "",
+  44 |       "address": "Tehran Province, Shahriar, Vali-e Asr St, M335+VPQ, Iran"
+  45 |     },
+  46 |     {
+  47 |       "name": "شرکت فنی مهندسی تعمیرات یخچال مهدی",
+  48 |       "phone": "02165221525",
+  49 |       "website": "",
+  50 |       "address": "Tehran Province, Shahriar, Enghelab Blvd, M342+JWJ, Iran"
+  51 |     },
+  52 |     {
+  53 |       "name": "sahand sanat",
+  54 |       "phone": "09124498501",
+  55 |       "website": "",
+  56 |       "address": "Tehran Province, Shahriar، شهریار،، M2V2+G4P, Iran"
+  57 |     },
+  58 |     {
+  59 |       "name": "نمایندگی و تعمیرات یخچال و لباسشویی شایان",
+  60 |       "phone": "09353380792",
+  61 |       "website": "",
+  62 |       "address": "Tehran Province, Malard, W Atlas St, MXXC+3X5, Iran"
+  63 |     },
+  64 |     {
+  65 |       "name": "German Bosch",
+  66 |       "phone": "02165289156",
+  67 |       "website": "http://www.boschiranco.com/",
+  68 |       "address": "M377+94G, Shahriar, Tehran Province, Iran"
+  69 |     },
+  70 |     {
+  71 |       "name": "LG STORE",
+  72 |       "phone": "02165320458",
+  73 |       "website": "",
+  74 |       "address": "Tehran Province, Shahriar, Shohada-e- Andishe Rd, M2HR+V36, Iran"
+  75 |     },
+  76 |     {
+  77 |       "name": "حامد سرویس | تعمیر لباسشویی در شهریار| تعمیر لباسشویی در محل",
+  78 |       "phone": "09308310165",
+  79 |       "website": "https://hamedservic.com/",
+  80 |       "address": "Tehran Province, کرج، Enghelab Blvd, M354+2FJ, Iran"
+  81 |     },
+  82 |     {
+  83 |       "name": "حامد سرویس | تعمیر لباسشویی در وایین | تعمیر لباسشویی در محل",
+  84 |       "phone": "09308310165",
+  85 |       "website": "https://hamedservic.com/",
+  86 |       "address": "Tehran Province, Shahriar، شهرک وائین، گلشن پنجم، M2GR+J8Q, Iran"
+  87 |     },
+  88 |     {
+  89 |       "name": "Daewoo Store",
+  90 |       "phone": "02165110166",
+  91 |       "website": "http://www.andishekala.com/",
+  92 |       "address": "MXXV+5F7, Tehran, Tehran Province, Iran"
+  93 |     },
+  94 |     {
+  95 |       "name": "نمایندگی رسمی دوو(فروشگاه مرکزی دوو)",
+  96 |       "phone": "02144212107",
+  97 |       "website": "http://daewooshop.ir/",
+  98 |       "address": "Tehran Province, Tehran, Marzdaran Blvd, No. ۱۲۰, Iran"
+  99 |     },
+ 100 |     {
+ 101 |       "name": "لوازم خانگی ویرپول",
+ 102 |       "phone": "09124380204",
+ 103 |       "website": "",
+ 104 |       "address": "Tehran Province, Shahriar، کرج،، M355+CVW, Iran"
+ 105 |     },
+ 106 |     {
+ 107 |       "name": "Home appliances city",
+ 108 |       "phone": "02145887000",
+ 109 |       "website": "http://www.shahrkhanegi.com/",
+ 110 |       "address": "Tehran Province, Tehran، District 21، Mostafa Khomeini Street, Iran"
+ 111 |     },
+ 112 |     {
+ 113 |       "name": "Zohre Appliance store",
+ 114 |       "phone": "02122862311",
+ 115 |       "website": "",
+ 116 |       "address": "Tehran, Shariati St, No. 940, Iran"
+ 117 |     },
+ 118 |     {
+ 119 |       "name": "لوازم خانگی و آشپزخانه آزادی",
+ 120 |       "phone": "02177159633",
+ 121 |       "website": "",
+ 122 |       "address": "تهران، اول سبلان شمالی نبش کوچه تهرانی پلاک ۲۹۰, Iran"
+ 123 |     },
+ 124 |     {
+ 125 |       "name": "فروشگاه یاسی کالا",
+ 126 |       "phone": "09122496881",
+ 127 |       "website": "",
+ 128 |       "address": "Tehran، تهران، استان تهران، تهران، ‫نارمک بختیاری،،، PFGM+V3Q, Iran"
+ 129 |     },
+ 130 |     {
+ 131 |       "name": "لوازم خانگی ملکوتی",
+ 132 |       "phone": "09194225182",
+ 133 |       "website": "http://www.entekhabtoo.ir/",
+ 134 |       "address": "استان تهران،، تهران،، ‫خيابان پدرثانى،، پلاک ۵۹،, Iran"
+ 135 |     },
+ 136 |     {
+ 137 |       "name": "نمایندگی",
+ 138 |       "phone": "09351327514",
+ 139 |       "website": "",
+ 140 |       "address": "Shahriar، استان تهران، شهریار، شهرک مریم، کرج،،، M265+8G8, Iran"
+ 141 |     },
+ 142 |     {
+ 143 |       "name": "مرکز تعمیرات لوازم خانگی و پکیج",
+ 144 |       "phone": "09199891287",
+ 145 |       "website": "",
+ 146 |       "address": "Karaj، شهرک مریم، استان تهران، شهریار، M2C4+FXX, Iran"
+ 147 |     },
+ 148 |     {
+ 149 |       "name": "تعمیر لوازم خانگی",
+ 150 |       "phone": "02165326120",
+ 151 |       "website": "",
+ 152 |       "address": "Shahriar، شهرک وائین،، M28Q+C26, Iran"
+ 153 |     },
+ 154 |     {
+ 155 |       "name": "Daewoo shop",
+ 156 |       "phone": "02144220509",
+ 157 |       "website": "http://daewoomarket.com/",
+ 158 |       "address": "Tehran, Marzdaran Blvd, بین پورجعفری و آریافر، پلاک150, Iran"
+ 159 |     },
+ 160 |     {
+ 161 |       "name": "snowa Store",
+ 162 |       "phone": "02177714013",
+ 163 |       "website": "",
+ 164 |       "address": "PGJG+2V6 District 8, Tehran, Tehran Province, Iran"
+ 165 |     },
+ 166 |     {
+ 167 |       "name": "فروشگاه اینترنتی انتخاب تو",
+ 168 |       "phone": "09194225182",
+ 169 |       "website": "http://www.entekhabtoo.com/",
+ 170 |       "address": "Tehran، خیابان افشاری پلاک ۵۹, Damavand St, No. ایستگاه پل, Iran"
+ 171 |     },
+ 172 |     {
+ 173 |       "name": "لوازم خانگی اسنوا و دوو دردشت",
+ 174 |       "phone": "02177907861",
+ 175 |       "website": "",
+ 176 |       "address": "Tehran، دردشت، پلاک پایین تر از تقاطع گلبرگ روبروی کوچه شیخ پلاک ۳۶۴, Iran"
+ 177 |     },
+ 178 |     {
+ 179 |       "name": "لوازم خانگی فدک",
+ 180 |       "phone": "02177039863",
+ 181 |       "website": "",
+ 182 |       "address": "Tehran، استان تهران، تهران، خیابان مدنی،، PFJJ+5CP, Iran"
+ 183 |     },
+ 184 |     {
+ 185 |       "name": "Bujari home goods store",
+ 186 |       "phone": "02177908238",
+ 187 |       "website": "",
+ 188 |       "address": "PFCV+2HH, Tehran, Tehran Province, Iran"
+ 189 |     },
+ 190 |     {
+ 191 |       "name": "پخش صدرا",
+ 192 |       "phone": "02177974104",
+ 193 |       "website": "",
+ 194 |       "address": "PF9P+747, Tehran, Tehran Province, Iran"
+ 195 |     },
+ 196 |     {
+ 197 |       "name": "Sanjeh Kish",
+ 198 |       "phone": "02177905115",
+ 199 |       "website": "",
+ 200 |       "address": "Tehran Province, Tehran, Dr Ayat St, PFGV+56H, Iran"
+
+     ... (106 lines skipped) ...
+
+======================================================================
+✅ نمایش کامل ساختار به پایان رسید
+======================================================================

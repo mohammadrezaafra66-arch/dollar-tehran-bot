@@ -1,0 +1,37 @@
+{
+  "query": "بوش فروشگاه لوازم خانگی در نارمک",
+  "total": 5,
+  "businesses": [
+    {
+      "slug": "bosch+support+tehran",
+      "name": "bosch support tehran",
+      "clean_href": "https://www.google.com/maps/place/bosch+support+tehran/data=!4m7!3m6!1s0x3f8e03d0f9af49bd:0x4713f83b8929ac0c!8m2!3d35.7399737!4d51.4909649!16s%2Fg%2F11ffh6c5_1!19sChIJvUmv-dADjj8RDKwpiTv4E0c",
+      "raw_href": "https://www.google.com/maps/place/bosch+support+tehran/data=!4m7!3m6!1s0x3f8e03d0f9af49bd:0x4713f83b8929ac0c!8m2!3d35.7399737!4d51.4909649!16s%2Fg%2F11ffh6c5_1!19sChIJvUmv-dADjj8RDKwpiTv4E0c?authuser=0&hl=en&rclk=1"
+    },
+    {
+      "slug": "BOSCH",
+      "name": "BOSCH",
+      "clean_href": "https://www.google.com/maps/place/BOSCH/data=!4m7!3m6!1s0x3f8e03e731056a53:0x2026068c7c93e43c!8m2!3d35.7334616!4d51.4399931!16s%2Fg%2F11g9d2gfqj!19sChIJU2oFMecDjj8RPOSTfIwGJiA",
+      "raw_href": "https://www.google.com/maps/place/BOSCH/data=!4m7!3m6!1s0x3f8e03e731056a53:0x2026068c7c93e43c!8m2!3d35.7334616!4d51.4399931!16s%2Fg%2F11g9d2gfqj!19sChIJU2oFMecDjj8RPOSTfIwGJiA?authuser=0&hl=en&rclk=1"
+    },
+    {
+      "slug": "Bosch+Iran+Store",
+      "name": "Bosch Iran Store",
+      "clean_href": "https://www.google.com/maps/place/Bosch+Iran+Store/data=!4m7!3m6!1s0x3f8e021bfc9b4935:0x704bf5d6c308300f!8m2!3d35.7237663!4d51.4185903!16s%2Fg%2F11c5spt7jb!19sChIJNUmb_BsCjj8RDzAIw9b1S3A",
+      "raw_href": "https://www.google.com/maps/place/Bosch+Iran+Store/data=!4m7!3m6!1s0x3f8e021bfc9b4935:0x704bf5d6c308300f!8m2!3d35.7237663!4d51.4185903!16s%2Fg%2F11c5spt7jb!19sChIJNUmb_BsCjj8RDzAIw9b1S3A?authuser=0&hl=en&rclk=1"
+    },
+    {
+      "slug": "%D8%AE%D8%A7%D9%86%D9%87+%D8%A8%D9%88%D8%B4%E2%80%AD",
+      "name": "خانه بوش",
+      "clean_href": "https://www.google.com/maps/place/%D8%AE%D8%A7%D9%86%D9%87+%D8%A8%D9%88%D8%B4%E2%80%AD/data=!4m7!3m6!1s0x3f8de51a7772a26f:0xfdc5c77342dd9ed!8m2!3d35.7554884!4d51.4471442!16s%2Fg%2F11s9m461sp!19sChIJb6JydxrljT8R7dktNHdc3A8",
+      "raw_href": "https://www.google.com/maps/place/%D8%AE%D8%A7%D9%86%D9%87+%D8%A8%D9%88%D8%B4%E2%80%AD/data=!4m7!3m6!1s0x3f8de51a7772a26f:0xfdc5c77342dd9ed!8m2!3d35.7554884!4d51.4471442!16s%2Fg%2F11s9m461sp!19sChIJb6JydxrljT8R7dktNHdc3A8?authuser=0&hl=en&rclk=1"
+    },
+    {
+      "slug": "%D9%85%D8%B1%DA%A9%D8%B2%DB%8C+%D8%A8%D9%88%D8%B4+%D8%B3%DB%8C%D9%87%D8%A7%D9%88%DB%8C%E2%80%AD",
+      "name": "مرکزی بوش سیهاوی",
+      "clean_href": "https://www.google.com/maps/place/%D9%85%D8%B1%DA%A9%D8%B2%DB%8C+%D8%A8%D9%88%D8%B4+%D8%B3%DB%8C%D9%87%D8%A7%D9%88%DB%8C%E2%80%AD/data=!4m7!3m6!1s0x3f8e03d30f017475:0xca08a7529aa2d9a!8m2!3d35.7325037!4d51.4397335!16s%2Fg%2F11kpgy4r60!19sChIJdXQBD9MDjj8Rmi2qKXWKoAw",
+      "raw_href": "https://www.google.com/maps/place/%D9%85%D8%B1%DA%A9%D8%B2%DB%8C+%D8%A8%D9%88%D8%B4+%D8%B3%DB%8C%D9%87%D8%A7%D9%88%DB%8C%E2%80%AD/data=!4m7!3m6!1s0x3f8e03d30f017475:0xca08a7529aa2d9a!8m2!3d35.7325037!4d51.4397335!16s%2Fg%2F11kpgy4r60!19sChIJdXQBD9MDjj8Rmi2qKXWKoAw?authuser=0&hl=en&rclk=1"
+    }
+  ],
+  "timestamp": "2026-05-23 12:23:02"
+}
