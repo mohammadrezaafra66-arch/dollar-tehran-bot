@@ -1,0 +1,48 @@
+{
+  "portal": {
+    "title": "مرکز مدیریت ربات‌های افرا کالا",
+    "subtitle": "صفحه ورود محلی برای مدیریت ربات‌ها، داشبوردها و سرویس‌های داخلی افرا کالا",
+    "version": "1.0.0"
+  },
+  "bots": [
+    {
+      "id": "market_data",
+      "name": "ربات شاخص‌های بازار",
+      "short_name": "شاخص‌های بازار",
+      "description": "استخراج زنده نرخ ارز، طلا، سکه و شاخص‌های مالی از منابع مختلف و آماده‌سازی خروجی API برای دستیار افرا کالا.",
+      "category": "market-intelligence",
+      "status": "active",
+      "panel_url": "/bots/market-data",
+      "api_url": "/api/live",
+      "icon": "📈",
+      "accent": "blue",
+      "order": 10
+    },
+    {
+      "id": "accounting_assistant",
+      "name": "ربات دستیار حسابداری",
+      "short_name": "حسابداری",
+      "description": "جایگاه آماده برای ربات‌های تحلیل خرید، قیمت‌گذاری، سرمایه‌گذاری و کنترل ریسک مالی.",
+      "category": "finance",
+      "status": "planned",
+      "panel_url": "#",
+      "api_url": "#",
+      "icon": "🧮",
+      "accent": "green",
+      "order": 20
+    },
+    {
+      "id": "pricing_assistant",
+      "name": "ربات قیمت‌گذاری کالا",
+      "short_name": "قیمت‌گذاری",
+      "description": "جایگاه آماده برای اتصال فرمول‌های قیمت‌گذاری محصولات افرا کالا بر اساس نرخ‌های زنده بازار.",
+      "category": "pricing",
+      "status": "planned",
+      "panel_url": "#",
+      "api_url": "#",
+      "icon": "🏷️",
+      "accent": "orange",
+      "order": 30
+    }
+  ]
+}
