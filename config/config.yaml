@@ -1,0 +1,19 @@
+database:
+  path: database/leads.db
+
+workers:
+  count: 2
+  retry_limit: 3
+
+logging:
+  level: INFO
+  activity_file: logs/activity.log
+  error_file: logs/error.log
+
+playwright:
+  headless: false
+  slow_mo: 300
+
+proxy:
+  enabled: false
+  rotation: random
