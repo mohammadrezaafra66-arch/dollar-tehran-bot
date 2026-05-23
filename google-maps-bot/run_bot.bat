@@ -1,4 +1,13 @@
 @echo off
-cd /d C:\Users\Asus\Desktop\google-maps-bot
-C:\Users\Asus\AppData\Local\Python\pythoncore-3.14-64\python.exe run.py
+setlocal
+cd /d "%~dp0"
+
+if exist ".venv\Scripts\python.exe" (
+    ".venv\Scripts\python.exe" run.py
+) else (
+    python run.py
+)
+
+if not exist logs mkdir logs
 echo %date% %time% - Bot executed >> logs\execution_log.txt
+pause
