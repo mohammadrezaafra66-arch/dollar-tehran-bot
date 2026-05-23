@@ -1,0 +1,27 @@
+app:
+  name: Afra Automation Platform
+  environment: development
+
+database:
+  driver: sqlite
+  path: ./data/afra.db
+
+queue:
+  driver: sqlite
+  max_workers: 3
+  retry_delay_seconds: 60
+
+scheduler:
+  enabled: true
+  timezone: Asia/Tehran
+
+logging:
+  level: INFO
+  audit_enabled: true
+
+plugins:
+  divar:
+    enabled: true
+
+  google_maps:
+    enabled: false
