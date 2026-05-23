@@ -63,4 +63,16 @@ class SQLiteManager:
                     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS extraction_results (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    plugin_name TEXT NOT NULL,
+                    source_url TEXT,
+                    raw_title TEXT,
+                    raw_payload TEXT,
+                    confidence_score REAL DEFAULT 0,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_jobs_status_priority ON jobs(status, priority)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_extraction_plugin ON extraction_results(plugin_name)')
