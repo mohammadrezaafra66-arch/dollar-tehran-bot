@@ -1,0 +1,30 @@
+profiles:
+  safe:
+    delay_between_pages: [90, 180]
+    delay_between_ads: [25, 60]
+    max_ads_per_hour: 40
+    max_parallel_workers: 1
+
+  slow:
+    delay_between_pages: [45, 90]
+    delay_between_ads: [15, 30]
+    max_ads_per_hour: 80
+    max_parallel_workers: 2
+
+  normal:
+    delay_between_pages: [20, 45]
+    delay_between_ads: [8, 15]
+    max_ads_per_hour: 150
+    max_parallel_workers: 3
+
+  fast:
+    delay_between_pages: [5, 15]
+    delay_between_ads: [2, 5]
+    max_ads_per_hour: 300
+    max_parallel_workers: 5
+
+  test:
+    delay_between_pages: [1, 2]
+    delay_between_ads: [1, 2]
+    max_ads_per_hour: 9999
+    max_parallel_workers: 1
