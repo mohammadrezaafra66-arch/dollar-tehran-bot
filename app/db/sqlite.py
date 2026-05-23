@@ -74,5 +74,33 @@ class SQLiteManager:
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS sellers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    platform TEXT NOT NULL,
+                    display_name TEXT,
+                    source_id TEXT,
+                    confidence_score REAL DEFAULT 0,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS ads (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    platform TEXT NOT NULL,
+                    seller_id INTEGER,
+                    title TEXT,
+                    price TEXT,
+                    source_url TEXT UNIQUE,
+                    description TEXT,
+                    city TEXT,
+                    confidence_score REAL DEFAULT 0,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_jobs_status_priority ON jobs(status, priority)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_extraction_plugin ON extraction_results(plugin_name)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_ads_platform ON ads(platform)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_sellers_platform ON sellers(platform)')
