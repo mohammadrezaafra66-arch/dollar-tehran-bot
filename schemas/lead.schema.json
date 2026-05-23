@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Lead",
+  "type": "object",
+  "required": [
+    "seller_id",
+    "lead_score"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "seller_id": {
+      "type": "string"
+    },
+    "lead_score": {
+      "type": "number"
+    },
+    "confidence_score": {
+      "type": "number"
+    },
+    "tags": {
+      "type": "array"
+    },
+    "created_at": {
+      "type": "string"
+    }
+  }
+}
