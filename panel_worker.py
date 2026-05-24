@@ -4,7 +4,9 @@ import json
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-QUEUE_PATH = BASE_DIR / 'data' / 'panel_job_requests.jsonl'
+DATA_DIR = BASE_DIR / 'data'
+QUEUE_PATH = DATA_DIR / 'panel_job_requests.jsonl'
+STATE_PATH = DATA_DIR / 'panel_worker_state.json'
 MAPS_RUN = BASE_DIR / 'google-maps-bot' / 'run.py'
 
 
@@ -24,6 +26,12 @@ def read_queue() -> list[dict]:
     return items
 
 
+def write_state(data: dict) -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with STATE_PATH.open('w', encoding='utf-8') as file:
+        json.dump(data, file, ensure_ascii=False, indent=2)
+
+
 def target_for(item: dict) -> str:
     if item.get('bot_id') == 'google_maps_leads':
         return str(MAPS_RUN)
@@ -35,5 +43,16 @@ def summary() -> dict:
     return {'queue_exists': queue_exists(), 'count': len(jobs), 'targets': [target_for(job) for job in jobs]}
 
 
+def prepare_first_job() -> dict:
+    jobs = read_queue()
+    if not jobs:
+        return {'status': 'idle', 'message': 'no_jobs'}
+    job = jobs[0]
+    target = target_for(job)
+    data = {'status': 'ready_to_run', 'job': job, 'target': target, 'runner_exists': MAPS_RUN.exists()}
+    write_state(data)
+    return data
+
+
 if __name__ == '__main__':
-    print(summary())
+    print(prepare_first_job())
