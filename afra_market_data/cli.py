@@ -8,6 +8,12 @@ import time
 from .core import jalali_stamp, load_config, post_to_afra, run_once
 from .source_check import check_sources, enable_successful_pending, save_report
 from .drivers.torob_driver import TorobDriver
+from .core.logger import PlatformLogger
+from .core.queue_manager import QueueManager, QueueJob
+from .core.checkpoint_engine import CheckpointEngine
+from .db.storage import SQLiteStorage
+from .runtime.worker import WorkerRuntime
+from .runtime.scheduler import SchedulerEngine
 
 
 async def run_torob_dry():
@@ -26,6 +32,31 @@ async def run_torob_dry():
     await driver.stop()
 
 
+def run_architecture_smoke_test():
+    logger = PlatformLogger()
+    queue = QueueManager()
+    checkpoint = CheckpointEngine('data/checkpoints/smoke-test.json')
+    storage = SQLiteStorage()
+    scheduler = SchedulerEngine(interval_seconds=60)
+    worker = WorkerRuntime(worker_name='smoke-test-worker', queue_manager=queue)
+
+    queue.add_job(QueueJob(platform='torob', query='smoke test'))
+    checkpoint.save({'status': 'ok', 'stage': 'architecture_smoke_test'})
+
+    result = {
+        'status': 'success',
+        'logger': logger.__class__.__name__,
+        'queue_size': queue.size(),
+        'checkpoint_loaded': checkpoint.load(),
+        'storage': storage.__class__.__name__,
+        'scheduler': scheduler.__class__.__name__,
+        'worker': worker.__class__.__name__,
+    }
+
+    checkpoint.clear()
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
 def main():
     parser = argparse.ArgumentParser("afra-market-data")
     parser.add_argument(
@@ -39,7 +70,8 @@ def main():
             "check-sources",
             "check-pending",
             "enable-pending",
-            "torob-dry-run"
+            "torob-dry-run",
+            "architecture-smoke-test"
         ]
     )
     parser.add_argument("--config", default="configs/indicators.json")
@@ -47,6 +79,10 @@ def main():
     parser.add_argument("--source", default=None)
     parser.add_argument("--min-value", type=int, default=1)
     args = parser.parse_args()
+
+    if args.command == "architecture-smoke-test":
+        run_architecture_smoke_test()
+        return
 
     if args.command == "torob-dry-run":
         asyncio.run(run_torob_dry())
