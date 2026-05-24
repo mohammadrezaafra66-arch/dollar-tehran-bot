@@ -56,6 +56,7 @@
     <h2>Outputs</h2>
     <button onclick="loadOutputs()">Load Outputs</button>
     <button onclick="sampleOutputs()">Create Sample Output</button>
+    <div id="downloads-box"></div>
     <pre id="outputs-box">---</pre>
   </section>
 
@@ -85,6 +86,12 @@ function show(id, data) {
   document.getElementById(id).textContent = JSON.stringify(data, null, 2);
 }
 
+function renderDownloads(data) {
+  const files = data.files || data.items || [];
+  const box = document.getElementById('downloads-box');
+  box.innerHTML = files.map(file => `<p><a href="/api/google-maps/download/${encodeURIComponent(file.name)}" target="_blank">Download ${file.name}</a></p>`).join('');
+}
+
 async function loadAuthMode() { show('auth-box', await api('/api/auth-mode')); }
 async function loadHealth() { show('health-box', await api('/api/health')); }
 async function loadWorkerState() { show('worker-box', await api('/api/google-maps/worker-state')); }
@@ -94,8 +101,8 @@ async function loadInputs() { show('inputs-box', await api('/api/google-maps/inp
 async function sampleInputs() { show('inputs-box', await apiPost('/api/google-maps/inputs/sample')); }
 async function loadManage() { show('manage-box', await api('/api/google-maps/manage')); }
 async function sampleManage() { show('manage-box', await apiPost('/api/google-maps/manage/sample')); }
-async function loadOutputs() { show('outputs-box', await api('/api/google-maps/outputs')); }
-async function sampleOutputs() { show('outputs-box', await apiPost('/api/google-maps/outputs/sample')); }
+async function loadOutputs() { const data = await api('/api/google-maps/outputs'); show('outputs-box', data); renderDownloads(data); }
+async function sampleOutputs() { show('outputs-box', await apiPost('/api/google-maps/outputs/sample')); await loadOutputs(); }
 async function loadLogs() { show('logs-box', await api('/api/google-maps/logs')); }
 async function sampleLogs() { show('logs-box', await apiPost('/api/google-maps/logs/sample')); }
 async function refreshAll() { await loadAuthMode(); await loadHealth(); await loadWorkerState(); await loadQueue(); await loadInputs(); await loadManage(); await loadOutputs(); await loadLogs(); }
