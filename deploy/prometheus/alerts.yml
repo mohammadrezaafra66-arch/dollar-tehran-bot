@@ -1,0 +1,62 @@
+groups:
+  - name: afra-divar-bot-runtime
+    rules:
+      - alert: AfraRuntimeNotReady
+        expr: afra_runtime_ready == 0
+        for: 2m
+        labels:
+          severity: warning
+          service: divar-bot
+        annotations:
+          summary: Afra runtime is not ready
+          description: Runtime readiness probe has been failing for more than 2 minutes.
+
+      - alert: AfraRuntimeDown
+        expr: up{job="afra-divar-bot"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: divar-bot
+        annotations:
+          summary: Afra runtime target is down
+          description: Prometheus cannot scrape one or more Afra Divar Bot targets.
+
+      - alert: AfraHighJobFailureRate
+        expr: rate(afra_jobs_failed[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: divar-bot
+        annotations:
+          summary: High job failure rate detected
+          description: Job failures are above the allowed operational threshold.
+
+      - alert: AfraQueuePressureHigh
+        expr: afra_queue_depth > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: divar-bot
+        annotations:
+          summary: Queue pressure is high
+          description: Queue depth is above 1000 for more than 5 minutes.
+
+      - alert: AfraBrowserPoolSaturated
+        expr: afra_browser_active_leases >= afra_browser_capacity
+        for: 3m
+        labels:
+          severity: warning
+          service: divar-bot
+        annotations:
+          summary: Browser pool is saturated
+          description: Browser pool active leases are at or above configured capacity.
+
+      - alert: AfraDeadLettersDetected
+        expr: increase(afra_dead_letters_total[10m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: divar-bot
+        annotations:
+          summary: Dead-letter jobs detected
+          description: One or more jobs have been routed to DLQ in the last 10 minutes.
