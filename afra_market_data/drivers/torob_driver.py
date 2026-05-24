@@ -6,6 +6,7 @@ from afra_market_data.browser.anti_detection import AntiDetection
 from afra_market_data.browser.browser_manager import BrowserManager, BrowserSettings
 from afra_market_data.core.logger import PlatformLogger
 from afra_market_data.drivers.base_driver import BaseDriver
+from afra_market_data.services.torob_search import TorobSearchService
 
 
 class TorobDriver(BaseDriver):
@@ -13,6 +14,8 @@ class TorobDriver(BaseDriver):
         super().__init__('torob')
         self.logger = PlatformLogger()
         self.running = False
+        self.search_service = TorobSearchService()
+
         self.browser = BrowserManager(
             BrowserSettings(
                 headless=False,
@@ -41,23 +44,22 @@ class TorobDriver(BaseDriver):
 
         page = await self.browser.new_page()
 
-        await page.goto('https://torob.com', wait_until='domcontentloaded')
-
-        await AntiDetection.random_delay(1.5, 3.5)
-        await AntiDetection.human_mouse_move(page)
-        await AntiDetection.human_scroll(page)
-
-        title = await page.title()
+        search_result = await self.search_service.search(
+            page=page,
+            query=query,
+        )
 
         self.logger.activity(
-            'torob_home_loaded',
-            title=title,
+            'torob_search_completed',
+            query=query,
+            products_found=len(search_result.product_links),
         )
 
         return {
             'status': 'success',
             'query': query,
-            'page_title': title,
-            'products': [],
-            'sellers': [],
+            'search_url': search_result.search_url,
+            'page_title': search_result.page_title,
+            'product_links': search_result.product_links,
+            'product_count': len(search_result.product_links),
         }
