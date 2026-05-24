@@ -9,6 +9,11 @@
   <h1>Afra Local Panel</h1>
 
   <section>
+    <h2>Admin</h2>
+    <input id="admin-password" type="password" placeholder="Admin password">
+  </section>
+
+  <section>
     <h2>Auth Mode</h2>
     <button onclick="loadAuthMode()">Load Auth Mode</button>
     <pre id="auth-box">---</pre>
@@ -62,9 +67,18 @@
   </section>
 
 <script>
+function adminHeaders() {
+  const value = document.getElementById('admin-password').value;
+  return value ? {'x-panel-password': value} : {};
+}
+
 async function api(url, options={}) {
   const response = await fetch(url, options);
   return await response.json();
+}
+
+async function apiPost(url) {
+  return await api(url, {method:'POST', headers: adminHeaders()});
 }
 
 function show(id, data) {
@@ -75,15 +89,15 @@ async function loadAuthMode() { show('auth-box', await api('/api/auth-mode')); }
 async function loadHealth() { show('health-box', await api('/api/health')); }
 async function loadWorkerState() { show('worker-box', await api('/api/google-maps/worker-state')); }
 async function loadQueue() { show('queue-box', await api('/api/google-maps/queue')); }
-async function requestRun() { show('queue-box', await api('/api/google-maps/request-run', {method:'POST'})); await loadWorkerState(); }
+async function requestRun() { show('queue-box', await apiPost('/api/google-maps/request-run')); await loadWorkerState(); }
 async function loadInputs() { show('inputs-box', await api('/api/google-maps/inputs')); }
-async function sampleInputs() { show('inputs-box', await api('/api/google-maps/inputs/sample', {method:'POST'})); }
+async function sampleInputs() { show('inputs-box', await apiPost('/api/google-maps/inputs/sample')); }
 async function loadManage() { show('manage-box', await api('/api/google-maps/manage')); }
-async function sampleManage() { show('manage-box', await api('/api/google-maps/manage/sample', {method:'POST'})); }
+async function sampleManage() { show('manage-box', await apiPost('/api/google-maps/manage/sample')); }
 async function loadOutputs() { show('outputs-box', await api('/api/google-maps/outputs')); }
-async function sampleOutputs() { show('outputs-box', await api('/api/google-maps/outputs/sample', {method:'POST'})); }
+async function sampleOutputs() { show('outputs-box', await apiPost('/api/google-maps/outputs/sample')); }
 async function loadLogs() { show('logs-box', await api('/api/google-maps/logs')); }
-async function sampleLogs() { show('logs-box', await api('/api/google-maps/logs/sample', {method:'POST'})); }
+async function sampleLogs() { show('logs-box', await apiPost('/api/google-maps/logs/sample')); }
 async function refreshAll() { await loadAuthMode(); await loadHealth(); await loadWorkerState(); await loadQueue(); await loadInputs(); await loadManage(); await loadOutputs(); await loadLogs(); }
 refreshAll();
 </script>
