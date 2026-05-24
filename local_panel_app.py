@@ -14,6 +14,7 @@ INPUT_SETTINGS_PATH = BASE_DIR / 'data' / 'panel_google_maps_inputs.json'
 MANAGE_SETTINGS_PATH = BASE_DIR / 'data' / 'panel_google_maps_manage.json'
 OUTPUTS_PATH = BASE_DIR / 'data' / 'panel_outputs_registry.json'
 LOGS_PATH = BASE_DIR / 'data' / 'panel_logs_registry.json'
+WORKER_STATE_PATH = BASE_DIR / 'data' / 'panel_worker_state.json'
 UI_PATH = BASE_DIR / 'panel_ui.html'
 
 app = FastAPI(title='Afra Local Panel')
@@ -55,6 +56,11 @@ def health():
 def bots():
     config = load_portal_config()
     return {'bots': config.get('bots', [])}
+
+
+@app.get('/api/google-maps/worker-state')
+def google_maps_worker_state():
+    return read_json(WORKER_STATE_PATH, {'status': 'unknown'})
 
 
 @app.get('/api/google-maps/runner-exists')
