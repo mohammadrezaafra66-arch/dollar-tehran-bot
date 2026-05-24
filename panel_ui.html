@@ -15,6 +15,12 @@
   </section>
 
   <section>
+    <h2>Worker State</h2>
+    <button onclick="loadWorkerState()">Load Worker State</button>
+    <pre id="worker-box">---</pre>
+  </section>
+
+  <section>
     <h2>Queue</h2>
     <button onclick="loadQueue()">Load Queue</button>
     <button onclick="requestRun()">Request Run</button>
@@ -60,6 +66,7 @@ function show(id, data) {
 }
 
 async function loadHealth() { show('health-box', await api('/api/health')); }
+async function loadWorkerState() { show('worker-box', await api('/api/google-maps/worker-state')); }
 async function loadQueue() { show('queue-box', await api('/api/google-maps/queue')); }
 async function requestRun() { show('queue-box', await api('/api/google-maps/request-run', {method:'POST'})); }
 async function loadInputs() { show('inputs-box', await api('/api/google-maps/inputs')); }
