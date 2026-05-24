@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ portal.title }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="hero">
+            <div>
+                <h1>{{ portal.title }}</h1>
+                <p>{{ portal.subtitle }}</p>
+            </div>
+            <div class="version">
+                v{{ portal.version }}
+            </div>
+        </header>
+
+        <section class="grid">
+            {% for bot in bots %}
+            <article class="card accent-{{ bot.accent }}">
+                <div class="card-header">
+                    <div>
+                        <h2>{{ bot.short_name }}</h2>
+                        <p>{{ bot.name }}</p>
+                    </div>
+                    <span class="status {{ bot.status }}">{{ bot.status }}</span>
+                </div>
+
+                <div class="description">
+                    {{ bot.description }}
+                </div>
+
+                <div class="meta">
+                    <span>{{ bot.category }}</span>
+                    <span>{{ bot.id }}</span>
+                </div>
+
+                <div class="actions">
+                    <a href="{{ bot.panel_url }}" class="btn primary">Open Panel</a>
+                    <button disabled>Start</button>
+                    <button disabled>Logs</button>
+                </div>
+            </article>
+            {% endfor %}
+        </section>
+    </div>
+</body>
+</html>
