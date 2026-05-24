@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / 'configs' / 'bots.json'
@@ -35,6 +36,11 @@ def write_json(path: Path, data) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open('w', encoding='utf-8') as file:
         json.dump(data, file, ensure_ascii=False, indent=2)
+
+
+@app.get('/', response_class=HTMLResponse)
+def home():
+    return '<h1>Afra Local Panel</h1><p>Use /docs for API testing.</p>'
 
 
 @app.get('/api/health')
