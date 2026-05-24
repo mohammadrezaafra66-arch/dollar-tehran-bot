@@ -11,6 +11,7 @@ GOOGLE_MAPS_RUNNER = BASE_DIR / 'google-maps-bot' / 'run.py'
 JOB_QUEUE_PATH = BASE_DIR / 'data' / 'panel_job_requests.jsonl'
 INPUT_SETTINGS_PATH = BASE_DIR / 'data' / 'panel_google_maps_inputs.json'
 MANAGE_SETTINGS_PATH = BASE_DIR / 'data' / 'panel_google_maps_manage.json'
+OUTPUTS_PATH = BASE_DIR / 'data' / 'panel_outputs_registry.json'
 
 app = FastAPI(title='Afra Local Panel')
 
@@ -83,6 +84,11 @@ def get_google_maps_manage():
     return read_json(MANAGE_SETTINGS_PATH, {'execution_window': {'start': '00:00', 'end': '23:59'}, 'limits': {'max_queries': 10, 'max_businesses_per_query': 50}, 'delays': {'between_queries': '20-60', 'between_clicks': '5-15'}, 'status': 'pause'})
 
 
+@app.get('/api/google-maps/outputs')
+def get_google_maps_outputs():
+    return read_json(OUTPUTS_PATH, {'items': []})
+
+
 @app.post('/api/google-maps/inputs/sample')
 def create_sample_google_maps_input():
     data = {'items': [{'province': 'تهران', 'city': 'تهران', 'keyword': 'فروشگاه لوازم خانگی', 'brand': '', 'related_keywords': '', 'category': 'لوازم خانگی', 'active': True}]}
@@ -94,4 +100,11 @@ def create_sample_google_maps_input():
 def create_sample_google_maps_manage():
     data = {'execution_window': {'start': '00:00', 'end': '23:59'}, 'limits': {'max_queries': 10, 'max_businesses_per_query': 50}, 'delays': {'between_queries': '20-60', 'between_clicks': '5-15'}, 'status': 'resume'}
     write_json(MANAGE_SETTINGS_PATH, data)
+    return {'saved': True, 'data': data}
+
+
+@app.post('/api/google-maps/outputs/sample')
+def create_sample_output_registry():
+    data = {'items': [{'file_name': 'google_maps_results.xlsx', 'records': 120, 'status': 'ready'}]}
+    write_json(OUTPUTS_PATH, data)
     return {'saved': True, 'data': data}
