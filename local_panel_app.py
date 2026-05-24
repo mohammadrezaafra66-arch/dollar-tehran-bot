@@ -70,6 +70,10 @@ def safe_output_file(file_name: str) -> Path:
     return path
 
 
+def path_status(path: Path) -> dict:
+    return {'path': str(path), 'exists': path.exists()}
+
+
 @app.get('/', response_class=HTMLResponse)
 def home():
     if UI_PATH.exists():
@@ -79,7 +83,7 @@ def home():
 
 @app.get('/api/health')
 def health():
-    return {'status': 'ok'}
+    return {'status': 'ok', 'paths': {'runner': path_status(GOOGLE_MAPS_RUNNER), 'output_dir': path_status(GOOGLE_MAPS_OUTPUT_DIR), 'log_dir': path_status(GOOGLE_MAPS_LOG_DIR), 'ui': path_status(UI_PATH)}}
 
 
 @app.get('/api/auth-mode')
