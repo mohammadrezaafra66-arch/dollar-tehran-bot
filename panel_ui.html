@@ -89,7 +89,7 @@ async function loadAuthMode() { show('auth-box', await api('/api/auth-mode')); }
 async function loadHealth() { show('health-box', await api('/api/health')); }
 async function loadWorkerState() { show('worker-box', await api('/api/google-maps/worker-state')); }
 async function loadQueue() { show('queue-box', await api('/api/google-maps/queue')); }
-async function requestRun() { show('queue-box', await apiPost('/api/google-maps/request-run')); await loadWorkerState(); }
+async function requestRun() { if (!confirm('ثبت درخواست اجرای ربات انجام شود؟')) return; show('queue-box', await apiPost('/api/google-maps/request-run')); await loadWorkerState(); }
 async function loadInputs() { show('inputs-box', await api('/api/google-maps/inputs')); }
 async function sampleInputs() { show('inputs-box', await apiPost('/api/google-maps/inputs/sample')); }
 async function loadManage() { show('manage-box', await api('/api/google-maps/manage')); }
