@@ -27,7 +27,7 @@ When protected mode is enabled, enter the same password in the Admin field in th
 
 ## Smoke test
 
-1. `GET /api/health`
+1. `GET /api/health` and confirm `runner.exists` is true.
 2. `GET /api/auth-mode`
 3. `GET /api/bots`
 4. `GET /api/google-maps/runner-exists`
@@ -35,10 +35,12 @@ When protected mode is enabled, enter the same password in the Admin field in th
 6. `POST /api/google-maps/manage/sample`
 7. `POST /api/google-maps/request-run`
 8. `GET /api/google-maps/queue`
-9. `GET /api/google-maps/worker-state`
-10. `POST /api/google-maps/outputs/sample`
-11. `POST /api/google-maps/logs/sample`
-12. `GET /api/google-maps/downloads`
+9. `python panel_worker.py`
+10. `GET /api/google-maps/worker-state`
+11. `GET /api/google-maps/outputs`
+12. `GET /api/google-maps/logs`
+13. `GET /api/google-maps/downloads`
+14. Download an output file from `/api/google-maps/download/{file_name}` if files exist.
 
 ## Worker
 
@@ -55,3 +57,16 @@ python run_panel_job.py
 ```
 
 The launcher currently verifies that the worker state file exists and is ready for the runtime handoff.
+
+## Output discovery
+
+The panel scans these folders:
+
+- `google-maps-bot/output`
+- `google-maps-bot/logs`
+
+Output files can be downloaded through the panel UI or through:
+
+```text
+/api/google-maps/download/{file_name}
+```
