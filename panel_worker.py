@@ -5,6 +5,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 QUEUE_PATH = BASE_DIR / 'data' / 'panel_job_requests.jsonl'
+MAPS_RUN = BASE_DIR / 'google-maps-bot' / 'run.py'
 
 
 def queue_exists() -> bool:
@@ -23,5 +24,12 @@ def read_queue() -> list[dict]:
     return items
 
 
+def target_for(item: dict) -> str:
+    if item.get('bot_id') == 'google_maps_leads':
+        return str(MAPS_RUN)
+    return ''
+
+
 if __name__ == '__main__':
-    print({'queue_exists': queue_exists(), 'jobs': read_queue()})
+    jobs = read_queue()
+    print({'queue_exists': queue_exists(), 'jobs': jobs, 'targets': [target_for(job) for job in jobs]})
