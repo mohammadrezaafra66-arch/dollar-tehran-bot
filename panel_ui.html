@@ -9,50 +9,67 @@
   <h1>Afra Local Panel</h1>
 
   <section>
-    <h2>Inputs</h2>
-    <form>
-      <label>Province</label>
-      <input type="text" name="province">
-
-      <label>City</label>
-      <input type="text" name="city">
-
-      <label>Keyword</label>
-      <input type="text" name="keyword">
-
-      <button type="button">Save Input</button>
-    </form>
-  </section>
-
-  <section>
-    <h2>Manage</h2>
-    <form>
-      <label>Max Queries</label>
-      <input type="number" value="10">
-
-      <label>Execution Status</label>
-      <select>
-        <option>pause</option>
-        <option>resume</option>
-      </select>
-
-      <button type="button">Save Manage</button>
-    </form>
+    <h2>Health</h2>
+    <button onclick="loadHealth()">Load Health</button>
+    <pre id="health-box">---</pre>
   </section>
 
   <section>
     <h2>Queue</h2>
-    <div id="queue-list"></div>
+    <button onclick="loadQueue()">Load Queue</button>
+    <button onclick="requestRun()">Request Run</button>
+    <pre id="queue-box">---</pre>
+  </section>
+
+  <section>
+    <h2>Inputs</h2>
+    <button onclick="loadInputs()">Load Inputs</button>
+    <button onclick="sampleInputs()">Create Sample Input</button>
+    <pre id="inputs-box">---</pre>
+  </section>
+
+  <section>
+    <h2>Manage</h2>
+    <button onclick="loadManage()">Load Manage</button>
+    <button onclick="sampleManage()">Create Sample Manage</button>
+    <pre id="manage-box">---</pre>
   </section>
 
   <section>
     <h2>Outputs</h2>
-    <div id="outputs-list"></div>
+    <button onclick="loadOutputs()">Load Outputs</button>
+    <button onclick="sampleOutputs()">Create Sample Output</button>
+    <pre id="outputs-box">---</pre>
   </section>
 
   <section>
     <h2>Logs</h2>
-    <div id="logs-list"></div>
+    <button onclick="loadLogs()">Load Logs</button>
+    <button onclick="sampleLogs()">Create Sample Log</button>
+    <pre id="logs-box">---</pre>
   </section>
+
+<script>
+async function api(url, options={}) {
+  const response = await fetch(url, options);
+  return await response.json();
+}
+
+function show(id, data) {
+  document.getElementById(id).textContent = JSON.stringify(data, null, 2);
+}
+
+async function loadHealth() { show('health-box', await api('/api/health')); }
+async function loadQueue() { show('queue-box', await api('/api/google-maps/queue')); }
+async function requestRun() { show('queue-box', await api('/api/google-maps/request-run', {method:'POST'})); }
+async function loadInputs() { show('inputs-box', await api('/api/google-maps/inputs')); }
+async function sampleInputs() { show('inputs-box', await api('/api/google-maps/inputs/sample', {method:'POST'})); }
+async function loadManage() { show('manage-box', await api('/api/google-maps/manage')); }
+async function sampleManage() { show('manage-box', await api('/api/google-maps/manage/sample', {method:'POST'})); }
+async function loadOutputs() { show('outputs-box', await api('/api/google-maps/outputs')); }
+async function sampleOutputs() { show('outputs-box', await api('/api/google-maps/outputs/sample', {method:'POST'})); }
+async function loadLogs() { show('logs-box', await api('/api/google-maps/logs')); }
+async function sampleLogs() { show('logs-box', await api('/api/google-maps/logs/sample', {method:'POST'})); }
+</script>
 </body>
 </html>
