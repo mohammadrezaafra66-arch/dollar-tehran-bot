@@ -6,12 +6,15 @@ from typing import Any
 
 from playwright.async_api import Page
 
+from afra_market_data.services.price_normalizer import PriceNormalizer
+
 
 @dataclass
 class TorobSellerSnapshot:
     product_url: str
     seller_name: str
     price_text: str
+    price_value: int | None
     warranty_text: str
     seller_url: str
 
@@ -20,6 +23,7 @@ class TorobSellerSnapshot:
             'product_url': self.product_url,
             'seller_name': self.seller_name,
             'price_text': self.price_text,
+            'price_value': self.price_value,
             'warranty_text': self.warranty_text,
             'seller_url': self.seller_url,
         }
@@ -36,11 +40,14 @@ class TorobSellerExtractor:
         snapshots: list[TorobSellerSnapshot] = []
 
         for index, price_text in enumerate(price_candidates[:10]):
+            normalized_price = PriceNormalizer.normalize(price_text)
+
             snapshots.append(
                 TorobSellerSnapshot(
                     product_url=product_url,
                     seller_name=f'unknown_seller_{index + 1}',
                     price_text=price_text,
+                    price_value=normalized_price.value,
                     warranty_text='',
                     seller_url=seller_links[index] if index < len(seller_links) else '',
                 )
