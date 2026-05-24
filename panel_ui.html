@@ -75,7 +75,9 @@ function adminHeaders() {
 
 async function api(url, options={}) {
   const response = await fetch(url, options);
-  return await response.json();
+  const data = await response.json();
+  if (!response.ok) return {error: true, status: response.status, detail: data.detail || data};
+  return data;
 }
 
 async function apiPost(url) {
