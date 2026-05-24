@@ -9,6 +9,12 @@
   <h1>Afra Local Panel</h1>
 
   <section>
+    <h2>Auth Mode</h2>
+    <button onclick="loadAuthMode()">Load Auth Mode</button>
+    <pre id="auth-box">---</pre>
+  </section>
+
+  <section>
     <h2>Health</h2>
     <button onclick="loadHealth()">Load Health</button>
     <pre id="health-box">---</pre>
@@ -65,6 +71,7 @@ function show(id, data) {
   document.getElementById(id).textContent = JSON.stringify(data, null, 2);
 }
 
+async function loadAuthMode() { show('auth-box', await api('/api/auth-mode')); }
 async function loadHealth() { show('health-box', await api('/api/health')); }
 async function loadWorkerState() { show('worker-box', await api('/api/google-maps/worker-state')); }
 async function loadQueue() { show('queue-box', await api('/api/google-maps/queue')); }
@@ -77,7 +84,7 @@ async function loadOutputs() { show('outputs-box', await api('/api/google-maps/o
 async function sampleOutputs() { show('outputs-box', await api('/api/google-maps/outputs/sample', {method:'POST'})); }
 async function loadLogs() { show('logs-box', await api('/api/google-maps/logs')); }
 async function sampleLogs() { show('logs-box', await api('/api/google-maps/logs/sample', {method:'POST'})); }
-async function refreshAll() { await loadHealth(); await loadWorkerState(); await loadQueue(); await loadInputs(); await loadManage(); await loadOutputs(); await loadLogs(); }
+async function refreshAll() { await loadAuthMode(); await loadHealth(); await loadWorkerState(); await loadQueue(); await loadInputs(); await loadManage(); await loadOutputs(); await loadLogs(); }
 refreshAll();
 </script>
 </body>
