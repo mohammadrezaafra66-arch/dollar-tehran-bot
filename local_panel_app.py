@@ -9,6 +9,8 @@ from fastapi.responses import HTMLResponse
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / 'configs' / 'bots.json'
 GOOGLE_MAPS_RUNNER = BASE_DIR / 'google-maps-bot' / 'run.py'
+GOOGLE_MAPS_OUTPUT_DIR = BASE_DIR / 'google-maps-bot' / 'output'
+GOOGLE_MAPS_LOG_DIR = BASE_DIR / 'google-maps-bot' / 'logs'
 JOB_QUEUE_PATH = BASE_DIR / 'data' / 'panel_job_requests.jsonl'
 INPUT_SETTINGS_PATH = BASE_DIR / 'data' / 'panel_google_maps_inputs.json'
 MANAGE_SETTINGS_PATH = BASE_DIR / 'data' / 'panel_google_maps_manage.json'
@@ -38,6 +40,16 @@ def write_json(path: Path, data) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open('w', encoding='utf-8') as file:
         json.dump(data, file, ensure_ascii=False, indent=2)
+
+
+def list_files(folder: Path) -> list[dict]:
+    if not folder.exists():
+        return []
+    items = []
+    for path in sorted(folder.glob('*'), key=lambda p: p.stat().st_mtime, reverse=True):
+        if path.is_file():
+            items.append({'name': path.name, 'path': str(path), 'size': path.stat().st_size})
+    return items
 
 
 @app.get('/', response_class=HTMLResponse)
@@ -102,18 +114,19 @@ def get_google_maps_manage():
 
 @app.get('/api/google-maps/outputs')
 def get_google_maps_outputs():
-    return read_json(OUTPUTS_PATH, {'items': []})
+    registry = read_json(OUTPUTS_PATH, {'items': []})
+    return {'items': registry.get('items', []), 'files': list_files(GOOGLE_MAPS_OUTPUT_DIR)}
 
 
 @app.get('/api/google-maps/logs')
 def get_google_maps_logs():
-    return read_json(LOGS_PATH, {'items': []})
+    registry = read_json(LOGS_PATH, {'items': []})
+    return {'items': registry.get('items', []), 'files': list_files(GOOGLE_MAPS_LOG_DIR)}
 
 
 @app.get('/api/google-maps/downloads')
 def get_google_maps_downloads():
-    outputs = read_json(OUTPUTS_PATH, {'items': []})
-    return {'items': outputs.get('items', [])}
+    return {'items': list_files(GOOGLE_MAPS_OUTPUT_DIR)}
 
 
 @app.post('/api/google-maps/inputs/sample')
