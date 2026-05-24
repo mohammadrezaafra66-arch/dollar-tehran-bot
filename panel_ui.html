@@ -68,7 +68,7 @@ function show(id, data) {
 async function loadHealth() { show('health-box', await api('/api/health')); }
 async function loadWorkerState() { show('worker-box', await api('/api/google-maps/worker-state')); }
 async function loadQueue() { show('queue-box', await api('/api/google-maps/queue')); }
-async function requestRun() { show('queue-box', await api('/api/google-maps/request-run', {method:'POST'})); }
+async function requestRun() { show('queue-box', await api('/api/google-maps/request-run', {method:'POST'})); await loadWorkerState(); }
 async function loadInputs() { show('inputs-box', await api('/api/google-maps/inputs')); }
 async function sampleInputs() { show('inputs-box', await api('/api/google-maps/inputs/sample', {method:'POST'})); }
 async function loadManage() { show('manage-box', await api('/api/google-maps/manage')); }
@@ -77,6 +77,8 @@ async function loadOutputs() { show('outputs-box', await api('/api/google-maps/o
 async function sampleOutputs() { show('outputs-box', await api('/api/google-maps/outputs/sample', {method:'POST'})); }
 async function loadLogs() { show('logs-box', await api('/api/google-maps/logs')); }
 async function sampleLogs() { show('logs-box', await api('/api/google-maps/logs/sample', {method:'POST'})); }
+async function refreshAll() { await loadHealth(); await loadWorkerState(); await loadQueue(); await loadInputs(); await loadManage(); await loadOutputs(); await loadLogs(); }
+refreshAll();
 </script>
 </body>
 </html>
