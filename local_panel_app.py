@@ -7,6 +7,7 @@ from fastapi import FastAPI
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / 'configs' / 'bots.json'
+GOOGLE_MAPS_RUNNER = BASE_DIR / 'google-maps-bot' / 'run.py'
 
 app = FastAPI(title='Afra Local Panel')
 
@@ -27,3 +28,8 @@ def health():
 def bots():
     config = load_portal_config()
     return {'bots': config.get('bots', [])}
+
+
+@app.get('/api/google-maps/runner-exists')
+def google_maps_runner_exists():
+    return {'exists': GOOGLE_MAPS_RUNNER.exists()}
