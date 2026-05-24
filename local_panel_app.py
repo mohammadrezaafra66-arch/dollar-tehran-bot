@@ -10,6 +10,7 @@ CONFIG_PATH = BASE_DIR / 'configs' / 'bots.json'
 GOOGLE_MAPS_RUNNER = BASE_DIR / 'google-maps-bot' / 'run.py'
 JOB_QUEUE_PATH = BASE_DIR / 'data' / 'panel_job_requests.jsonl'
 INPUT_SETTINGS_PATH = BASE_DIR / 'data' / 'panel_google_maps_inputs.json'
+MANAGE_SETTINGS_PATH = BASE_DIR / 'data' / 'panel_google_maps_manage.json'
 
 app = FastAPI(title='Afra Local Panel')
 
@@ -77,8 +78,20 @@ def get_google_maps_inputs():
     return read_json(INPUT_SETTINGS_PATH, {'items': []})
 
 
+@app.get('/api/google-maps/manage')
+def get_google_maps_manage():
+    return read_json(MANAGE_SETTINGS_PATH, {'execution_window': {'start': '00:00', 'end': '23:59'}, 'limits': {'max_queries': 10, 'max_businesses_per_query': 50}, 'delays': {'between_queries': '20-60', 'between_clicks': '5-15'}, 'status': 'pause'})
+
+
 @app.post('/api/google-maps/inputs/sample')
 def create_sample_google_maps_input():
     data = {'items': [{'province': 'تهران', 'city': 'تهران', 'keyword': 'فروشگاه لوازم خانگی', 'brand': '', 'related_keywords': '', 'category': 'لوازم خانگی', 'active': True}]}
     write_json(INPUT_SETTINGS_PATH, data)
+    return {'saved': True, 'data': data}
+
+
+@app.post('/api/google-maps/manage/sample')
+def create_sample_google_maps_manage():
+    data = {'execution_window': {'start': '00:00', 'end': '23:59'}, 'limits': {'max_queries': 10, 'max_businesses_per_query': 50}, 'delays': {'between_queries': '20-60', 'between_clicks': '5-15'}, 'status': 'resume'}
+    write_json(MANAGE_SETTINGS_PATH, data)
     return {'saved': True, 'data': data}
