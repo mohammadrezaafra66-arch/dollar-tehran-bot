@@ -23,3 +23,7 @@ def queued_job_payload(bot_id: str) -> dict:
         "status": "queued",
         "message": "job queued",
     }
+
+
+def jobs_payload(jobs: list[dict]) -> dict:
+    return {"jobs": jobs, "total": len(jobs)}
