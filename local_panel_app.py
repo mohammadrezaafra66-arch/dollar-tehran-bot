@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -18,8 +19,13 @@ OUTPUTS_PATH = BASE_DIR / 'data' / 'panel_outputs_registry.json'
 LOGS_PATH = BASE_DIR / 'data' / 'panel_logs_registry.json'
 WORKER_STATE_PATH = BASE_DIR / 'data' / 'panel_worker_state.json'
 UI_PATH = BASE_DIR / 'panel_ui.html'
+ADMIN_PASSWORD = os.getenv('AFRA_PANEL_ADMIN_PASSWORD', '')
 
 app = FastAPI(title='Afra Local Panel')
+
+
+def auth_enabled() -> bool:
+    return bool(ADMIN_PASSWORD)
 
 
 def load_portal_config() -> dict:
@@ -69,6 +75,11 @@ def home():
 @app.get('/api/health')
 def health():
     return {'status': 'ok'}
+
+
+@app.get('/api/auth-mode')
+def panel_auth_mode():
+    return {'auth_enabled': auth_enabled()}
 
 
 @app.get('/api/bots')
