@@ -14,6 +14,7 @@ INPUT_SETTINGS_PATH = BASE_DIR / 'data' / 'panel_google_maps_inputs.json'
 MANAGE_SETTINGS_PATH = BASE_DIR / 'data' / 'panel_google_maps_manage.json'
 OUTPUTS_PATH = BASE_DIR / 'data' / 'panel_outputs_registry.json'
 LOGS_PATH = BASE_DIR / 'data' / 'panel_logs_registry.json'
+UI_PATH = BASE_DIR / 'panel_ui.html'
 
 app = FastAPI(title='Afra Local Panel')
 
@@ -40,6 +41,8 @@ def write_json(path: Path, data) -> None:
 
 @app.get('/', response_class=HTMLResponse)
 def home():
+    if UI_PATH.exists():
+        return UI_PATH.read_text(encoding='utf-8')
     return '<h1>Afra Local Panel</h1><p>Use /docs for API testing.</p>'
 
 
