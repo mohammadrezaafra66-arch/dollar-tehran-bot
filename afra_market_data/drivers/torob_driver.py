@@ -5,9 +5,11 @@ from typing import Any
 from afra_market_data.browser.anti_detection import AntiDetection
 from afra_market_data.browser.browser_manager import BrowserManager, BrowserSettings
 from afra_market_data.core.logger import PlatformLogger
+from afra_market_data.db.torob_repository import TorobRepository
 from afra_market_data.drivers.base_driver import BaseDriver
 from afra_market_data.services.torob_product_extractor import TorobProductExtractor
 from afra_market_data.services.torob_search import TorobSearchService
+from afra_market_data.services.torob_seller_extractor import TorobSellerExtractor
 
 
 class TorobDriver(BaseDriver):
@@ -18,6 +20,8 @@ class TorobDriver(BaseDriver):
 
         self.search_service = TorobSearchService()
         self.product_extractor = TorobProductExtractor()
+        self.seller_extractor = TorobSellerExtractor()
+        self.repository = TorobRepository()
 
         self.browser = BrowserManager(
             BrowserSettings(
@@ -59,6 +63,7 @@ class TorobDriver(BaseDriver):
         )
 
         product_snapshots = []
+        seller_snapshots = []
 
         for product_link in search_result.product_links[:3]:
             try:
@@ -67,12 +72,25 @@ class TorobDriver(BaseDriver):
                     product_url=product_link,
                 )
 
-                product_snapshots.append(snapshot.to_dict())
+                product_data = snapshot.to_dict()
+                product_snapshots.append(product_data)
+                self.repository.save_product(query=query, product=product_data)
+
+                sellers = await self.seller_extractor.extract(
+                    page=page,
+                    product_url=product_link,
+                )
+
+                for seller in sellers:
+                    seller_data = seller.to_dict()
+                    seller_snapshots.append(seller_data)
+                    self.repository.save_seller(seller_data)
 
                 self.logger.activity(
                     'torob_product_extracted',
                     title=snapshot.title,
                     url=product_link,
+                    sellers_found=len(sellers),
                 )
 
             except Exception as e:
@@ -90,4 +108,6 @@ class TorobDriver(BaseDriver):
             'product_links': search_result.product_links,
             'product_count': len(search_result.product_links),
             'products': product_snapshots,
+            'sellers': seller_snapshots,
+            'seller_count': len(seller_snapshots),
         }
