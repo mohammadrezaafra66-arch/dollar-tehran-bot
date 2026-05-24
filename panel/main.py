@@ -46,3 +46,14 @@ def dashboard(request: Request):
             "bots": bots,
         },
     )
+
+
+@app.get("/bots/google-maps-leads", response_class=HTMLResponse)
+def google_maps_panel(request: Request):
+    return templates.TemplateResponse(
+        "google_maps.html",
+        {
+            "request": request,
+            "status": "idle",
+        },
+    )
