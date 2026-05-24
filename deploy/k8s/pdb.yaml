@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: afra-divar-bot
+  labels:
+    app.kubernetes.io/name: afra-divar-bot
+    app.kubernetes.io/part-of: afra-automation-platform
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: afra-divar-bot
