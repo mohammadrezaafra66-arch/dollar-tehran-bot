@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -26,6 +26,11 @@ app = FastAPI(title='Afra Local Panel')
 
 def auth_enabled() -> bool:
     return bool(ADMIN_PASSWORD)
+
+
+def require_admin(x_panel_password: str | None = Header(default=None)) -> None:
+    if ADMIN_PASSWORD and x_panel_password != ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail='unauthorized')
 
 
 def load_portal_config() -> dict:
@@ -99,7 +104,8 @@ def google_maps_runner_exists():
 
 
 @app.post('/api/google-maps/request-run')
-def request_google_maps_run():
+def request_google_maps_run(x_panel_password: str | None = Header(default=None)):
+    require_admin(x_panel_password)
     JOB_QUEUE_PATH.parent.mkdir(parents=True, exist_ok=True)
     item = {'bot_id': 'google_maps_leads', 'status': 'requested'}
     with JOB_QUEUE_PATH.open('a', encoding='utf-8') as file:
@@ -154,28 +160,32 @@ def download_google_maps_output(file_name: str):
 
 
 @app.post('/api/google-maps/inputs/sample')
-def create_sample_google_maps_input():
+def create_sample_google_maps_input(x_panel_password: str | None = Header(default=None)):
+    require_admin(x_panel_password)
     data = {'items': [{'province': 'تهران', 'city': 'تهران', 'keyword': 'فروشگاه لوازم خانگی', 'brand': '', 'related_keywords': '', 'category': 'لوازم خانگی', 'active': True}]}
     write_json(INPUT_SETTINGS_PATH, data)
     return {'saved': True, 'data': data}
 
 
 @app.post('/api/google-maps/manage/sample')
-def create_sample_google_maps_manage():
+def create_sample_google_maps_manage(x_panel_password: str | None = Header(default=None)):
+    require_admin(x_panel_password)
     data = {'execution_window': {'start': '00:00', 'end': '23:59'}, 'limits': {'max_queries': 10, 'max_businesses_per_query': 50}, 'delays': {'between_queries': '20-60', 'between_clicks': '5-15'}, 'status': 'resume'}
     write_json(MANAGE_SETTINGS_PATH, data)
     return {'saved': True, 'data': data}
 
 
 @app.post('/api/google-maps/outputs/sample')
-def create_sample_output_registry():
+def create_sample_output_registry(x_panel_password: str | None = Header(default=None)):
+    require_admin(x_panel_password)
     data = {'items': [{'file_name': 'google_maps_results.xlsx', 'records': 120, 'status': 'ready'}]}
     write_json(OUTPUTS_PATH, data)
     return {'saved': True, 'data': data}
 
 
 @app.post('/api/google-maps/logs/sample')
-def create_sample_logs_registry():
+def create_sample_logs_registry(x_panel_password: str | None = Header(default=None)):
+    require_admin(x_panel_password)
     data = {'items': [{'level': 'INFO', 'message': 'Google Maps panel log registry initialized'}]}
     write_json(LOGS_PATH, data)
     return {'saved': True, 'data': data}
