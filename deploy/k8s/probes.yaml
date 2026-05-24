@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: afra-divar-bot-probes
+  labels:
+    app.kubernetes.io/name: afra-divar-bot
+data:
+  livenessPath: /healthz
+  readinessPath: /readyz
+  metricsPath: /metrics
