@@ -7,6 +7,52 @@
 </head>
 <body>
   <h1>Afra Local Panel</h1>
-  <section id="app"></section>
+
+  <section>
+    <h2>Inputs</h2>
+    <form>
+      <label>Province</label>
+      <input type="text" name="province">
+
+      <label>City</label>
+      <input type="text" name="city">
+
+      <label>Keyword</label>
+      <input type="text" name="keyword">
+
+      <button type="button">Save Input</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Manage</h2>
+    <form>
+      <label>Max Queries</label>
+      <input type="number" value="10">
+
+      <label>Execution Status</label>
+      <select>
+        <option>pause</option>
+        <option>resume</option>
+      </select>
+
+      <button type="button">Save Manage</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Queue</h2>
+    <div id="queue-list"></div>
+  </section>
+
+  <section>
+    <h2>Outputs</h2>
+    <div id="outputs-list"></div>
+  </section>
+
+  <section>
+    <h2>Logs</h2>
+    <div id="logs-list"></div>
+  </section>
 </body>
 </html>
