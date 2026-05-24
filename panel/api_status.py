@@ -15,3 +15,11 @@ def idle_bot_status(bot_id: str, bot_name: str | None = None) -> dict:
         "success": 0,
         "failed": 0,
     }
+
+
+def queued_job_payload(bot_id: str) -> dict:
+    return {
+        "bot_id": bot_id,
+        "status": "queued",
+        "message": "job queued",
+    }
