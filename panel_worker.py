@@ -43,7 +43,16 @@ def summary() -> dict:
     return {'queue_exists': queue_exists(), 'count': len(jobs), 'targets': [target_for(job) for job in jobs]}
 
 
-if __name__ == '__main__':
-    data = summary()
+def prepare_first_job() -> dict:
+    jobs = read_queue()
+    if not jobs:
+        return {'status': 'idle', 'message': 'no_jobs'}
+    job = jobs[0]
+    target = target_for(job)
+    data = {'status': 'ready_to_run', 'job': job, 'target': target, 'runner_exists': MAPS_RUN.exists()}
     write_state(data)
-    print(data)
+    return data
+
+
+if __name__ == '__main__':
+    print(prepare_first_job())
