@@ -135,6 +135,16 @@ def get_google_maps_inputs():
     return read_json(INPUT_SETTINGS_PATH, {'items': []})
 
 
+@app.post('/api/google-maps/inputs/save')
+def save_google_maps_inputs(data: dict, x_panel_password: str | None = Header(default=None)):
+    require_admin(x_panel_password)
+    items = data.get('items')
+    if not isinstance(items, list):
+        raise HTTPException(status_code=400, detail='items must be a list')
+    write_json(INPUT_SETTINGS_PATH, {'items': items})
+    return {'saved': True, 'total': len(items), 'data': {'items': items}}
+
+
 @app.get('/api/google-maps/manage')
 def get_google_maps_manage():
     return read_json(MANAGE_SETTINGS_PATH, {'execution_window': {'start': '00:00', 'end': '23:59'}, 'limits': {'max_queries': 10, 'max_businesses_per_query': 50}, 'delays': {'between_queries': '20-60', 'between_clicks': '5-15'}, 'status': 'pause'})
