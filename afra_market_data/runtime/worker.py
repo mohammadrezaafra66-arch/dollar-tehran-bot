@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Optional
 
 from afra_market_data.core.logger import PlatformLogger
-from afra_market_data.core.queue_manager import QueueManager, QueueJob
+from afra_market_data.db.job_repository import JobRepository
+from afra_market_data.drivers.registry import get_driver_class
 
 
 class WorkerRuntime:
-    def __init__(self, worker_name: str, queue_manager: QueueManager):
+    def __init__(self, worker_name: str, job_repository: JobRepository):
         self.worker_name = worker_name
-        self.queue_manager = queue_manager
+        self.job_repository = job_repository
         self.logger = PlatformLogger()
         self.running = False
 
@@ -19,38 +19,64 @@ class WorkerRuntime:
         self.logger.run_started(self.worker_name)
 
         while self.running:
-            job: Optional[QueueJob] = self.queue_manager.get_job()
+            job = self.job_repository.claim_next_job()
 
             if not job:
                 await asyncio.sleep(1)
                 continue
 
+            job_id = job['id']
+
             try:
                 self.logger.activity(
                     'job_started',
                     worker=self.worker_name,
-                    query=job.query,
-                    platform=job.platform,
+                    query=job['query'],
+                    platform=job['platform'],
+                    job_id=job_id,
                 )
 
-                await self.process_job(job)
+                result = await self.process_job(job)
+
+                self.job_repository.mark_done(job_id, result)
 
                 self.logger.activity(
                     'job_finished',
                     worker=self.worker_name,
-                    query=job.query,
+                    query=job['query'],
+                    platform=job['platform'],
+                    job_id=job_id,
                 )
 
-            except Exception as e:
+            except Exception as exc:
+                self.job_repository.mark_failed(job_id, str(exc))
+
                 self.logger.error(
                     'job_failed',
                     worker=self.worker_name,
-                    query=job.query,
-                    error=str(e),
+                    query=job['query'],
+                    platform=job['platform'],
+                    job_id=job_id,
+                    error=str(exc),
                 )
 
-    async def process_job(self, job: QueueJob):
-        await asyncio.sleep(0.1)
+    async def process_job(self, job: dict):
+        driver_class = get_driver_class(job['platform'])
+        driver = driver_class()
+
+        await driver.start()
+
+        try:
+            result = await driver.process(
+                {
+                    'query': job['query'],
+                    **job.get('payload', {}),
+                }
+            )
+        finally:
+            await driver.stop()
+
+        return result
 
     async def stop(self):
         self.running = False
