@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: afra-divar-bot
+  labels:
+    app.kubernetes.io/name: afra-divar-bot
+    app.kubernetes.io/part-of: afra-automation-platform
+    app.kubernetes.io/component: worker-runtime
+spec:
+  serviceName: afra-divar-bot
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: afra-divar-bot
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: afra-divar-bot
+        app.kubernetes.io/part-of: afra-automation-platform
+        app.kubernetes.io/component: worker-runtime
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8080"
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: divar-bot
+          image: afrakala/divar-bot:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: health
+              containerPort: 8080
+          env:
+            - name: AFRA_ENVIRONMENT
+              value: production
+            - name: AFRA_SERVICE_NAME
+              value: divar-bot
+            - name: AFRA_HEALTH_PORT
+              value: "8080"
+            - name: AFRA_BROWSER_HEADLESS
+              value: "true"
+            - name: AFRA_STATE_DIR
+              value: /var/lib/afra-runtime
+            - name: DIVAR_BOT_INSTANCE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: afra-runtime-secrets
+                  key: redis-url
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                secretKeyRef:
+                  name: afra-runtime-secrets
+                  key: kafka-bootstrap-servers
+            - name: ETCD_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: afra-runtime-config
+                  key: etcd-host
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 20"]
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: runtime-state
+              mountPath: /var/lib/afra-runtime
+  volumeClaimTemplates:
+    - metadata:
+        name: runtime-state
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
