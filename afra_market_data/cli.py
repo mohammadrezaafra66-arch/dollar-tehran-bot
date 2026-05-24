@@ -1,21 +1,56 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import time
 
 from .core import jalali_stamp, load_config, post_to_afra, run_once
 from .source_check import check_sources, enable_successful_pending, save_report
+from .drivers.torob_driver import TorobDriver
+
+
+async def run_torob_dry():
+    driver = TorobDriver()
+
+    await driver.start()
+
+    result = await driver.process(
+        {
+            'query': 'تلویزیون سامسونگ'
+        }
+    )
+
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+    await driver.stop()
 
 
 def main():
     parser = argparse.ArgumentParser("afra-market-data")
-    parser.add_argument("command", nargs="?", default="run-once", choices=["run-once", "run-loop", "post", "check-sources", "check-pending", "enable-pending"])
+    parser.add_argument(
+        "command",
+        nargs="?",
+        default="run-once",
+        choices=[
+            "run-once",
+            "run-loop",
+            "post",
+            "check-sources",
+            "check-pending",
+            "enable-pending",
+            "torob-dry-run"
+        ]
+    )
     parser.add_argument("--config", default="configs/indicators.json")
     parser.add_argument("--indicator", default=None)
     parser.add_argument("--source", default=None)
     parser.add_argument("--min-value", type=int, default=1)
     args = parser.parse_args()
+
+    if args.command == "torob-dry-run":
+        asyncio.run(run_torob_dry())
+        return
 
     if args.command == "run-once":
         payload = run_once(args.config)
