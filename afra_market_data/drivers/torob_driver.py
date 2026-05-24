@@ -7,6 +7,7 @@ from afra_market_data.browser.browser_manager import BrowserManager, BrowserSett
 from afra_market_data.core.logger import PlatformLogger
 from afra_market_data.db.torob_repository import TorobRepository
 from afra_market_data.drivers.base_driver import BaseDriver
+from afra_market_data.services.price_analytics import PriceAnalytics
 from afra_market_data.services.torob_product_extractor import TorobProductExtractor
 from afra_market_data.services.torob_search import TorobSearchService
 from afra_market_data.services.torob_seller_extractor import TorobSellerExtractor
@@ -100,6 +101,15 @@ class TorobDriver(BaseDriver):
                     error=str(e),
                 )
 
+        analytics = PriceAnalytics.summarize(seller_snapshots)
+
+        self.logger.activity(
+            'torob_price_analytics_generated',
+            min_price=analytics.min_price,
+            max_price=analytics.max_price,
+            avg_price=analytics.avg_price,
+        )
+
         return {
             'status': 'success',
             'query': query,
@@ -110,4 +120,5 @@ class TorobDriver(BaseDriver):
             'products': product_snapshots,
             'sellers': seller_snapshots,
             'seller_count': len(seller_snapshots),
+            'market_analysis': analytics.to_dict(),
         }
