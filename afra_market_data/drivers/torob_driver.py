@@ -6,6 +6,7 @@ from afra_market_data.browser.anti_detection import AntiDetection
 from afra_market_data.browser.browser_manager import BrowserManager, BrowserSettings
 from afra_market_data.core.logger import PlatformLogger
 from afra_market_data.drivers.base_driver import BaseDriver
+from afra_market_data.services.torob_product_extractor import TorobProductExtractor
 from afra_market_data.services.torob_search import TorobSearchService
 
 
@@ -14,7 +15,9 @@ class TorobDriver(BaseDriver):
         super().__init__('torob')
         self.logger = PlatformLogger()
         self.running = False
+
         self.search_service = TorobSearchService()
+        self.product_extractor = TorobProductExtractor()
 
         self.browser = BrowserManager(
             BrowserSettings(
@@ -55,6 +58,30 @@ class TorobDriver(BaseDriver):
             products_found=len(search_result.product_links),
         )
 
+        product_snapshots = []
+
+        for product_link in search_result.product_links[:3]:
+            try:
+                snapshot = await self.product_extractor.extract(
+                    page=page,
+                    product_url=product_link,
+                )
+
+                product_snapshots.append(snapshot.to_dict())
+
+                self.logger.activity(
+                    'torob_product_extracted',
+                    title=snapshot.title,
+                    url=product_link,
+                )
+
+            except Exception as e:
+                self.logger.error(
+                    'torob_product_extraction_failed',
+                    url=product_link,
+                    error=str(e),
+                )
+
         return {
             'status': 'success',
             'query': query,
@@ -62,4 +89,5 @@ class TorobDriver(BaseDriver):
             'page_title': search_result.page_title,
             'product_links': search_result.product_links,
             'product_count': len(search_result.product_links),
+            'products': product_snapshots,
         }
