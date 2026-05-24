@@ -3,111 +3,101 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Afra Local Panel</title>
+  <title>Afra Google Maps Panel</title>
+  <style>
+    body{margin:0;background:#f5f7fb;color:#111827;font-family:Tahoma,Arial,sans-serif}
+    .wrap{max-width:1280px;margin:auto;padding:24px}
+    .hero{background:#111827;color:white;border-radius:18px;padding:24px;margin-bottom:18px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px}
+    .card{background:white;border-radius:16px;padding:18px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+    input,select{width:100%;box-sizing:border-box;padding:10px;margin:6px 0 10px;border:1px solid #d1d5db;border-radius:10px}
+    button{border:0;background:#2563eb;color:white;border-radius:10px;padding:10px 14px;margin:4px;cursor:pointer}
+    button.secondary{background:#374151}
+    pre{background:#0f172a;color:#e5e7eb;padding:12px;border-radius:12px;overflow:auto;max-height:260px}
+    label{font-size:13px;color:#374151}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  </style>
 </head>
 <body>
-  <h1>Afra Local Panel</h1>
+<div class="wrap">
+  <header class="hero">
+    <h1>پنل لوکال Google Maps Bot</h1>
+    <p>ورودی، تنظیمات، اجرا، وضعیت، لاگ و خروجی در یک صفحه</p>
+  </header>
 
-  <section>
-    <h2>Admin</h2>
-    <input id="admin-password" type="password" placeholder="Admin password">
-  </section>
+  <main class="grid">
+    <section class="card">
+      <h2>ورودی جستجو</h2>
+      <div class="row"><div><label>استان</label><input id="province" value="تهران"></div><div><label>شهر</label><input id="city" value="شهریار"></div></div>
+      <label>کلمه اصلی</label><input id="keyword" value="فروشگاه لوازم خانگی">
+      <div class="row"><div><label>برند</label><input id="brand" value="ال جی"></div><div><label>دسته بندی</label><input id="category" value="لوازم خانگی"></div></div>
+      <label>کلمات مرتبط</label><input id="related" value="یخچال, لباسشویی, ماشین ظرفشویی">
+      <label>فعال؟</label><select id="active"><option value="true" selected>بله</option><option value="false">خیر</option></select>
+      <button onclick="saveInputForm()">ذخیره ورودی پنل</button>
+      <button class="secondary" onclick="loadInputs()">نمایش ورودی‌ها</button>
+      <pre id="inputs-box">---</pre>
+    </section>
 
-  <section>
-    <h2>Auth Mode</h2>
-    <button onclick="loadAuthMode()">Load Auth Mode</button>
-    <pre id="auth-box">---</pre>
-  </section>
+    <section class="card">
+      <h2>مدیریت اجرا</h2>
+      <div class="row"><div><label>Max Scrolls</label><input id="max_scrolls" type="number" value="5"></div><div><label>Businesses / Query</label><input id="max_businesses_per_query" type="number" value="5"></div></div>
+      <div class="row"><div><label>Extract Limit</label><input id="max_businesses_to_extract" type="number" value="5"></div><div><label>Website Crawl</label><select id="website_crawl_enabled"><option value="true" selected>فعال</option><option value="false">غیرفعال</option></select></div></div>
+      <button onclick="sampleManage()">ذخیره تنظیمات نمونه</button>
+      <button class="secondary" onclick="loadManage()">نمایش تنظیمات</button>
+      <pre id="manage-box">---</pre>
+    </section>
 
-  <section>
-    <h2>Health</h2>
-    <button onclick="loadHealth()">Load Health</button>
-    <pre id="health-box">---</pre>
-  </section>
+    <section class="card">
+      <h2>اجرا و وضعیت</h2>
+      <input id="admin-password" type="password" placeholder="Admin password اختیاری">
+      <button onclick="requestRun()">ثبت درخواست اجرا</button>
+      <button class="secondary" onclick="loadQueue()">صف اجرا</button>
+      <button class="secondary" onclick="loadWorkerState()">وضعیت Worker</button>
+      <pre id="queue-box">---</pre>
+      <pre id="worker-box">---</pre>
+    </section>
 
-  <section>
-    <h2>Worker State</h2>
-    <button onclick="loadWorkerState()">Load Worker State</button>
-    <pre id="worker-box">---</pre>
-  </section>
+    <section class="card">
+      <h2>سلامت سیستم</h2>
+      <button onclick="refreshAll()">Refresh All</button>
+      <button class="secondary" onclick="loadAuthMode()">Auth Mode</button>
+      <pre id="health-box">---</pre>
+      <pre id="auth-box">---</pre>
+    </section>
 
-  <section>
-    <h2>Queue</h2>
-    <button onclick="loadQueue()">Load Queue</button>
-    <button onclick="requestRun()">Request Run</button>
-    <pre id="queue-box">---</pre>
-  </section>
+    <section class="card">
+      <h2>خروجی‌ها</h2>
+      <button onclick="loadOutputs()">نمایش خروجی‌ها</button>
+      <div id="downloads-box"></div>
+      <pre id="outputs-box">---</pre>
+    </section>
 
-  <section>
-    <h2>Inputs</h2>
-    <button onclick="loadInputs()">Load Inputs</button>
-    <button onclick="sampleInputs()">Create Sample Input</button>
-    <pre id="inputs-box">---</pre>
-  </section>
-
-  <section>
-    <h2>Manage</h2>
-    <button onclick="loadManage()">Load Manage</button>
-    <button onclick="sampleManage()">Create Sample Manage</button>
-    <pre id="manage-box">---</pre>
-  </section>
-
-  <section>
-    <h2>Outputs</h2>
-    <button onclick="loadOutputs()">Load Outputs</button>
-    <button onclick="sampleOutputs()">Create Sample Output</button>
-    <div id="downloads-box"></div>
-    <pre id="outputs-box">---</pre>
-  </section>
-
-  <section>
-    <h2>Logs</h2>
-    <button onclick="loadLogs()">Load Logs</button>
-    <button onclick="sampleLogs()">Create Sample Log</button>
-    <pre id="logs-box">---</pre>
-  </section>
-
+    <section class="card">
+      <h2>لاگ‌ها</h2>
+      <button onclick="loadLogs()">نمایش لاگ‌ها</button>
+      <pre id="logs-box">---</pre>
+    </section>
+  </main>
+</div>
 <script>
-function adminHeaders() {
-  const value = document.getElementById('admin-password').value;
-  return value ? {'x-panel-password': value} : {};
-}
-
-async function api(url, options={}) {
-  const response = await fetch(url, options);
-  const data = await response.json();
-  if (!response.ok) return {error: true, status: response.status, detail: data.detail || data};
-  return data;
-}
-
-async function apiPost(url) {
-  return await api(url, {method:'POST', headers: adminHeaders()});
-}
-
-function show(id, data) {
-  document.getElementById(id).textContent = JSON.stringify(data, null, 2);
-}
-
-function renderDownloads(data) {
-  const files = data.files || data.items || [];
-  const box = document.getElementById('downloads-box');
-  box.innerHTML = files.map(file => `<p><a href="/api/google-maps/download/${encodeURIComponent(file.name)}" target="_blank">Download ${file.name}</a></p>`).join('');
-}
-
-async function loadAuthMode() { show('auth-box', await api('/api/auth-mode')); }
-async function loadHealth() { show('health-box', await api('/api/health')); }
-async function loadWorkerState() { show('worker-box', await api('/api/google-maps/worker-state')); }
-async function loadQueue() { show('queue-box', await api('/api/google-maps/queue')); }
-async function requestRun() { if (!confirm('ثبت درخواست اجرای ربات انجام شود؟')) return; show('queue-box', await apiPost('/api/google-maps/request-run')); await loadWorkerState(); }
-async function loadInputs() { show('inputs-box', await api('/api/google-maps/inputs')); }
-async function sampleInputs() { show('inputs-box', await apiPost('/api/google-maps/inputs/sample')); }
-async function loadManage() { show('manage-box', await api('/api/google-maps/manage')); }
-async function sampleManage() { show('manage-box', await apiPost('/api/google-maps/manage/sample')); }
-async function loadOutputs() { const data = await api('/api/google-maps/outputs'); show('outputs-box', data); renderDownloads(data); }
-async function sampleOutputs() { show('outputs-box', await apiPost('/api/google-maps/outputs/sample')); await loadOutputs(); }
-async function loadLogs() { show('logs-box', await api('/api/google-maps/logs')); }
-async function sampleLogs() { show('logs-box', await apiPost('/api/google-maps/logs/sample')); }
-async function refreshAll() { await loadAuthMode(); await loadHealth(); await loadWorkerState(); await loadQueue(); await loadInputs(); await loadManage(); await loadOutputs(); await loadLogs(); }
+function adminHeaders(){const v=document.getElementById('admin-password').value;return v?{'x-panel-password':v}:{};}
+async function api(url,options={}){const r=await fetch(url,options);const d=await r.json();if(!r.ok)return{error:true,status:r.status,detail:d.detail||d};return d;}
+async function apiPost(url,body=null){const options={method:'POST',headers:{...adminHeaders()}};if(body){options.headers['Content-Type']='application/json';options.body=JSON.stringify(body);}return await api(url,options);}
+function show(id,data){document.getElementById(id).textContent=JSON.stringify(data,null,2);}
+function inputPayload(){return{items:[{province:province.value,city:city.value,keyword:keyword.value,brand:brand.value,related_keywords:related.value,category:category.value,active:active.value==='true'}]};}
+function renderDownloads(data){const files=data.files||data.items||[];downloadsBox.innerHTML=files.map(f=>`<p><a href="/api/google-maps/download/${encodeURIComponent(f.name)}" target="_blank">دانلود ${f.name}</a></p>`).join('');}
+async function saveInputForm(){show('inputs-box',await apiPost('/api/google-maps/inputs/save',inputPayload()));}
+async function loadInputs(){show('inputs-box',await api('/api/google-maps/inputs'));}
+async function loadManage(){show('manage-box',await api('/api/google-maps/manage'));}
+async function sampleManage(){show('manage-box',await apiPost('/api/google-maps/manage/sample'));}
+async function requestRun(){if(!confirm('درخواست اجرای ربات ثبت شود؟'))return;show('queue-box',await apiPost('/api/google-maps/request-run'));await loadWorkerState();}
+async function loadQueue(){show('queue-box',await api('/api/google-maps/queue'));}
+async function loadWorkerState(){show('worker-box',await api('/api/google-maps/worker-state'));}
+async function loadHealth(){show('health-box',await api('/api/health'));}
+async function loadAuthMode(){show('auth-box',await api('/api/auth-mode'));}
+async function loadOutputs(){const d=await api('/api/google-maps/outputs');show('outputs-box',d);renderDownloads(d);}
+async function loadLogs(){show('logs-box',await api('/api/google-maps/logs'));}
+async function refreshAll(){await loadHealth();await loadAuthMode();await loadInputs();await loadManage();await loadQueue();await loadWorkerState();await loadOutputs();await loadLogs();}
 refreshAll();
 </script>
 </body>
