@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: afra-runtime-config
+  labels:
+    app.kubernetes.io/name: afra-divar-bot
+    app.kubernetes.io/part-of: afra-automation-platform
+data:
+  AFRA_ENVIRONMENT: production
+  AFRA_LOG_LEVEL: INFO
+  AFRA_BROWSER_POOL_MAX_BROWSERS: "4"
+  AFRA_BROWSER_POOL_MAX_CONTEXTS: "6"
+  AFRA_BROWSER_HEADLESS: "true"
+  AFRA_ORCH_MAX_REPLICAS: "50"
+  AFRA_JOB_MAX_ATTEMPTS: "3"
+  AFRA_RATE_LIMIT_CAPACITY: "30"
+  AFRA_RATE_LIMIT_REFILL_PER_SECOND: "0.5"
+  AFRA_HEALTH_PORT: "8080"
+  AFRA_TERMINATION_GRACE_SECONDS: "60"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: afra-runtime-secrets
+  labels:
+    app.kubernetes.io/name: afra-divar-bot
+type: Opaque
+stringData:
+  redis-url: redis://redis:6379/0
+  kafka-bootstrap-servers: kafka:9092
+  proxy-username: change-me
+  proxy-password: change-me
+  openai-api-key: change-me
