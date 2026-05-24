@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse, HTMLResponse
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / 'configs' / 'bots.json'
@@ -50,6 +50,13 @@ def list_files(folder: Path) -> list[dict]:
         if path.is_file():
             items.append({'name': path.name, 'path': str(path), 'size': path.stat().st_size})
     return items
+
+
+def safe_output_file(file_name: str) -> Path:
+    path = (GOOGLE_MAPS_OUTPUT_DIR / file_name).resolve()
+    if GOOGLE_MAPS_OUTPUT_DIR.resolve() not in path.parents or not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail='file not found')
+    return path
 
 
 @app.get('/', response_class=HTMLResponse)
@@ -127,6 +134,12 @@ def get_google_maps_logs():
 @app.get('/api/google-maps/downloads')
 def get_google_maps_downloads():
     return {'items': list_files(GOOGLE_MAPS_OUTPUT_DIR)}
+
+
+@app.get('/api/google-maps/download/{file_name}')
+def download_google_maps_output(file_name: str):
+    path = safe_output_file(file_name)
+    return FileResponse(str(path), filename=path.name)
 
 
 @app.post('/api/google-maps/inputs/sample')
