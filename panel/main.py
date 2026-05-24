@@ -20,15 +20,7 @@ templates = Jinja2Templates(directory=str(PANEL_DIR / "templates"))
 
 def load_portal_config() -> dict:
     if not CONFIG_PATH.exists():
-        return {
-            "portal": {
-                "title": "Afra Local Bot Control Center",
-                "subtitle": "Local control panel for Afra automation bots",
-                "version": "0.1.0",
-            },
-            "bots": [],
-        }
-
+        return {"portal": {"title": "Afra Local Bot Control Center"}, "bots": []}
     with CONFIG_PATH.open("r", encoding="utf-8") as file:
         return json.load(file)
 
@@ -37,14 +29,9 @@ def load_portal_config() -> dict:
 def dashboard(request: Request):
     config = load_portal_config()
     bots = sorted(config.get("bots", []), key=lambda bot: bot.get("order", 999))
-
     return templates.TemplateResponse(
         "dashboard.html",
-        {
-            "request": request,
-            "portal": config.get("portal", {}),
-            "bots": bots,
-        },
+        {"request": request, "portal": config.get("portal", {}), "bots": bots},
     )
 
 
@@ -52,8 +39,16 @@ def dashboard(request: Request):
 def google_maps_panel(request: Request):
     return templates.TemplateResponse(
         "google_maps.html",
-        {
-            "request": request,
-            "status": "idle",
-        },
+        {"request": request, "status": "idle"},
     )
+
+
+@app.get("/api/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.get("/api/bots")
+def bots_api():
+    config = load_portal_config()
+    return {"bots": config.get("bots", [])}
