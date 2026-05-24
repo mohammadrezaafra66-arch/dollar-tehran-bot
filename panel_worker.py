@@ -30,6 +30,10 @@ def target_for(item: dict) -> str:
     return ''
 
 
-if __name__ == '__main__':
+def summary() -> dict:
     jobs = read_queue()
-    print({'queue_exists': queue_exists(), 'jobs': jobs, 'targets': [target_for(job) for job in jobs]})
+    return {'queue_exists': queue_exists(), 'count': len(jobs), 'targets': [target_for(job) for job in jobs]}
+
+
+if __name__ == '__main__':
+    print(summary())
