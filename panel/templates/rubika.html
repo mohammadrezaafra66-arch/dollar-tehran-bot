@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rubika Bot Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="hero purple-bg">
+    <span class="pill">Rubika Runtime</span>
+    <h1>داشبورد ربات روبیکا</h1>
+    <p>Campaign orchestration، sender health، session pool و runtime monitoring</p>
+  </header>
+
+  <section class="grid">
+    <article class="card">
+      <h2>Campaign</h2>
+      <label>Campaign Name</label>
+      <input value="Afra Rubika Campaign">
+      <label>Message</label>
+      <textarea>سلام، این پیام تست روبیکاست.</textarea>
+      <button class="btn purple">Create Campaign</button>
+    </article>
+
+    <article class="card">
+      <h2>Sender Health</h2>
+      <pre id="sender-health">loading...</pre>
+    </article>
+
+    <article class="card">
+      <h2>Session Pool</h2>
+      <pre id="session-pool">loading...</pre>
+    </article>
+
+    <article class="card">
+      <h2>Rubika Modules</h2>
+      <pre>{{ rubika_status }}</pre>
+    </article>
+  </section>
+</div>
+</body>
+</html>
