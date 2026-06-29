@@ -368,3 +368,12 @@ class Database:
 
     def close(self):
         pass
+
+
+        # migration: sync_status
+        try:
+            cursor.execute("ALTER TABLE businesses ADD COLUMN sync_status TEXT DEFAULT 'pending'")
+            conn.commit()
+            print("🧩 DB migrated: added businesses.sync_status")
+        except Exception:
+            pass  # ستون قبلاً وجود دارد

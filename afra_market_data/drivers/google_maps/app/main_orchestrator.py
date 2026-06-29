@@ -240,14 +240,14 @@ def main():
     orchestrator = Orchestrator()
     orchestrator.run()
 
+    # ========== فاز ۶: ارسال به سرور مرکزی ==========
+    print("\n" + "=" * 60)
+    print("📍 PHASE 6: Sync to Server")
+    print("=" * 60)
+    from app.api_sync import sync_completed_businesses
+    sync_result = sync_completed_businesses(limit=500)
+    print(f"✅ Synced: {sync_result['synced']} | Failed: {sync_result['failed']}")
+
 if __name__ == "__main__":
     main()
-
-        # ========== فاز ۶: ارسال به سرور مرکزی ==========
-        print("\n" + "=" * 60)
-        print("📍 PHASE 6: Sync to Server")
-        print("=" * 60)
-        from app.api_sync import sync_completed_businesses
-        sync_result = sync_completed_businesses(limit=500)
-        print(f"✅ Synced: {sync_result['synced']} | Failed: {sync_result['failed']}")
 
