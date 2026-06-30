@@ -1,0 +1,12 @@
+﻿data/*.db
+output/*.xlsx
+logs/*.log
+runtime/profiles/
+.env
+debug_*.py
+fix_*.py
+check_*.py
+test_*.py
+*.png
+!data/
+!data/deduplication.py
