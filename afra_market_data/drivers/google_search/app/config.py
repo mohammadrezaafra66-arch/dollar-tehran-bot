@@ -1,5 +1,7 @@
 # app/config.py - Google Search Driver
 import os
+from dotenv import load_dotenv
+load_dotenv()
 import pandas as pd
 from dataclasses import dataclass, field
 from typing import Tuple, Optional

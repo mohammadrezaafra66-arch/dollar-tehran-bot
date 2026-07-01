@@ -67,7 +67,7 @@ class SearchCollector:
             'user_agent': (
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                 'AppleWebKit/537.36 (KHTML, like Gecko) '
-                'Chrome/125.0.0.0 Safari/537.36'
+                'Chrome/149.0.0.0 Safari/537.36'
             ),
             'viewport': {'width': 1366, 'height': 768},
         }
@@ -82,6 +82,7 @@ class SearchCollector:
             }
             if local_browser:
                 launch_kwargs['executable_path'] = local_browser
+            launch_kwargs['args'] = [f'--profile-directory={Config.PROFILE_NAME}']
             context = p.chromium.launch_persistent_context(Config.USER_DATA_DIR, **launch_kwargs)
             browser = None
         else:
