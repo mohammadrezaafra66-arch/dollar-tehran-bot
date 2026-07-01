@@ -6,7 +6,6 @@ import urllib.parse
 from typing import List, Dict
 
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
-from playwright_stealth import stealth_sync
 
 from app.config import Config
 from app.browser_factory import launch_chromium, find_local_browser
@@ -14,7 +13,7 @@ from app.browser_factory import launch_chromium, find_local_browser
 GOOGLE_SEARCH_URL = "https://www.google.com/search"
 
 # patch webdriver detection
-# playwright_stealth handles all anti-detection patching
+
 
 PHONE_RE = re.compile(
     r'(?:'
@@ -91,7 +90,16 @@ class SearchCollector:
             context = browser.new_context(**context_opts)
 
         page = context.new_page()
-        stealth_sync(page)
+        page.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {get: () => false, configurable: true});
+            Object.defineProperty(navigator, 'plugins', {get: () => {const a=[1,2,3,4,5];a.__proto__=PluginArray.prototype;return a;}});
+            Object.defineProperty(navigator, 'languages', {get: () => ['fa-IR','fa','en-US','en']});
+            window.chrome = {app:{isInstalled:false},runtime:{},webstore:{onInstallStageChanged:{},onDownloadProgress:{}}};
+            const origQuery = window.navigator.permissions.query;
+            window.navigator.permissions.query = (p) => p.name==='notifications' ? Promise.resolve({state:Notification.permission}) : origQuery(p);
+            Object.defineProperty(navigator, 'hardwareConcurrency', {get: () => 8});
+            Object.defineProperty(navigator, 'deviceMemory', {get: () => 8});
+        """)
         page.set_default_timeout(Config.PAGE_TIMEOUT)
         return page, browser, context
 
