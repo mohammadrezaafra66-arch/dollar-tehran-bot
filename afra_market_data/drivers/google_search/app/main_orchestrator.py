@@ -1,6 +1,8 @@
-# app/main_orchestrator.py - Phase 4
+# app/main_orchestrator.py - Phase 4 (browser reuse across queries)
 import random
 import time
+
+from playwright.sync_api import sync_playwright
 
 from app.config import Config
 from app.database import Database
@@ -11,12 +13,6 @@ from app.website_crawler import WebsiteCrawler
 
 
 class Orchestrator:
-    """
-    Phase 1: QueryGenerator   → generated_queries (pending)
-    Phase 2: SearchCollector  → businesses (pending) + ResultExtractor (in-memory enrich)
-    Phase 3: WebsiteCrawler   → website_extractions
-    """
-
     def __init__(self):
         self.db = Database()
         self.collector = SearchCollector()
@@ -24,19 +20,18 @@ class Orchestrator:
 
     def run(self):
         # ============================================================
-        # Phase 1: تولید کوئری از Excel
+        # Phase 1: Query Generation
         # ============================================================
         print("\n" + "=" * 60)
         print("Phase 1: Query Generation")
         print("=" * 60)
         if Config.is_phase_enabled('Search Collector'):
-            qgen = QueryGenerator(Config.QUERIES_FILE)
-            qgen.run()
+            QueryGenerator(Config.QUERIES_FILE).run()
         else:
-            print("⏭️ Skipped (disabled in management file)")
+            print("⏭️ Skipped")
 
         # ============================================================
-        # Phase 2: جستجو + غنی‌سازی + ذخیره
+        # Phase 2: Search — یک browser برای همه query‌ها
         # ============================================================
         print("\n" + "=" * 60)
         print("Phase 2: Search Collection + Enrichment")
@@ -45,60 +40,64 @@ class Orchestrator:
             pending = self.db.get_pending_queries()
             print(f"📋 {len(pending)} pending queries")
 
-            for q in pending:
-                query_id   = q['id']
-                query_text = q['query_text']
-                source_id  = q.get('source_id')
+            if pending:
+                with sync_playwright() as p:
+                    page, browser, context = self.collector.create_page(p)
+                    print("🌐 Browser opened — reusing for all queries")
 
-                # شهر و استان از source
-                source   = self.db.get_source(source_id) if source_id else {}
-                city     = source.get('city', '')
-                province = source.get('province', '')
+                    # گرم کردن: یه بار به google.com برو
+                    try:
+                        page.goto("https://www.google.com", wait_until='domcontentloaded', timeout=15000)
+                        time.sleep(3)
+                        self.collector._accept_cookies(page)
+                        print("✅ Browser warmed up")
+                    except Exception as e:
+                        print(f"⚠️ Warmup failed: {e}")
 
-                print(f"\n🔍 [{query_id}] {query_text}")
+                    for idx, q in enumerate(pending):
+                        query_id   = q['id']
+                        query_text = q['query_text']
+                        source     = self.db.get_source(q.get('source_id')) if q.get('source_id') else {}
 
-                # collect از گوگل
-                raw_results = self.collector.collect(
-                    query_text, city=city, province=province
-                )
+                        print(f"\n🔍 [{query_id}] {query_text}")
+                        raw_results = self.collector.collect_on_page(
+                            page, query_text,
+                            city=source.get('city', ''),
+                            province=source.get('province', ''),
+                        )
 
-                if not raw_results:
-                    print("  ⚠️ No results — skipping")
-                    self.db.mark_query_done(query_id)
-                    continue
+                        if not raw_results:
+                            print("  ⚠️ No results")
+                            self.db.mark_query_done(query_id)
+                        else:
+                            enriched = self.extractor.enrich_batch(raw_results)
+                            self.db.add_results_batch(query_id, enriched)
+                            self.db.mark_query_businesses_done(query_id)
+                            self.db.mark_query_done(query_id)
+                            print(f"  📊 {self.db.get_stats()}")
 
-                # غنی‌سازی در حافظه
-                enriched = self.extractor.enrich_batch(raw_results)
+                        if idx < len(pending) - 1:
+                            delay = random.uniform(*Config.DELAY_BETWEEN_QUERIES)
+                            print(f"  ⏳ {delay:.0f}s before next query...")
+                            time.sleep(delay)
 
-                # ذخیره در DB
-                self.db.add_results_batch(query_id, enriched)
-
-                # تبدیل pending → done تا website_crawler بتونه بگیره
-                self.db.mark_query_businesses_done(query_id)
-                self.db.mark_query_done(query_id)
-
-                stats = self.db.get_stats()
-                print(f"  📊 DB total={stats['total']} done={stats['done']}")
-
-                # تأخیر بین کوئری‌ها
-                if q != pending[-1]:
-                    delay = random.uniform(*Config.DELAY_BETWEEN_QUERIES)
-                    print(f"  ⏳ {delay:.0f}s delay...")
-                    time.sleep(delay)
+                    context.close()
+                    if browser:
+                        browser.close()
+                    print("\n✅ Browser closed")
         else:
             print("⏭️ Skipped")
 
         # ============================================================
-        # Phase 3: Crawl وبسایت‌ها
+        # Phase 3: Website Crawl
         # ============================================================
         print("\n" + "=" * 60)
         print("Phase 3: Website Crawl")
         print("=" * 60)
         if Config.is_phase_enabled('Website Crawler') and Config.WEBSITE_CRAWL_ENABLED:
-            crawler = WebsiteCrawler()
-            crawler.run()
+            WebsiteCrawler().run()
         else:
-            print("⏭️ Skipped (disabled)")
+            print("⏭️ Skipped")
 
         print("\n✅ Orchestrator finished")
         print(f"Final stats: {self.db.get_stats()}")

@@ -61,7 +61,7 @@ class QueryGenerator:
             queries.append(f"{brand} {keyword}")
         
         # ترکیب 4: برند + کلمه اصلی + شهر
-        if brand and keyword and city:
+        if brand and brand != 'nan' and brand != '' and keyword and city:
             queries.append(f"{brand} {keyword} در {city}")
         
         # ترکیب 5: کلمات مرتبط + شهر
