@@ -224,3 +224,21 @@ class Database:
 
     def close(self):
         pass
+
+    def get_source(self, source_id: int) -> Dict:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'SELECT city, province, keyword FROM search_sources WHERE id = ?',
+                (source_id,)
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else {}
+
+    def mark_query_businesses_done(self, query_id: int):
+        """بعد از collect، همه pending این query رو done بزن تا website_crawler بگیره"""
+        with self._get_connection() as conn:
+            conn.execute(
+                'UPDATE businesses SET status = "done" WHERE query_id = ? AND status = "pending"',
+                (query_id,)
+            )
