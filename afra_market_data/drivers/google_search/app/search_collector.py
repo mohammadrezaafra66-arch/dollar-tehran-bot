@@ -6,6 +6,7 @@ import urllib.parse
 from typing import List, Dict
 
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
+from playwright_stealth import stealth_sync
 
 from app.config import Config
 from app.browser_factory import launch_chromium, find_local_browser
@@ -13,12 +14,7 @@ from app.browser_factory import launch_chromium, find_local_browser
 GOOGLE_SEARCH_URL = "https://www.google.com/search"
 
 # patch webdriver detection
-STEALTH_SCRIPT = """
-    Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-    window.chrome = {runtime: {}};
-    Object.defineProperty(navigator, 'plugins', {get: () => [1,2,3,4,5]});
-    Object.defineProperty(navigator, 'languages', {get: () => ['fa-IR','fa','en-US']});
-"""
+# playwright_stealth handles all anti-detection patching
 
 PHONE_RE = re.compile(
     r'(?:'
@@ -82,7 +78,12 @@ class SearchCollector:
             }
             if local_browser:
                 launch_kwargs['executable_path'] = local_browser
-            launch_kwargs['args'] = [f'--profile-directory={Config.PROFILE_NAME}']
+            launch_kwargs['args'] = [
+                f'--profile-directory={Config.PROFILE_NAME}',
+                '--disable-blink-features=AutomationControlled',
+                '--start-maximized',
+                '--disable-infobars',
+            ]
             context = p.chromium.launch_persistent_context(Config.USER_DATA_DIR, **launch_kwargs)
             browser = None
         else:
@@ -90,7 +91,7 @@ class SearchCollector:
             context = browser.new_context(**context_opts)
 
         page = context.new_page()
-        page.add_init_script(STEALTH_SCRIPT)
+        stealth_sync(page)
         page.set_default_timeout(Config.PAGE_TIMEOUT)
         return page, browser, context
 
