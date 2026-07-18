@@ -2,8 +2,9 @@ import asyncio
 import random
 import re
 from typing import Any
+from urllib.parse import quote
 
-from playwright.async_api import async_playwright
+import httpx
 
 from app.config import cfg
 
@@ -11,67 +12,117 @@ from app.config import cfg
 class TorobScraper:
     def __init__(self) -> None:
         self.base_url = "https://torob.com"
+        self.api_base = "https://api.torob.com/v4/base-product/details/"
 
     async def search_products(self, query: str) -> list[dict[str, Any]]:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=cfg.TOROB_HEADLESS)
-            page = await browser.new_page()
-            try:
-                search_url = f"{self.base_url}/search/?query={query.strip()}"
-                await page.goto(search_url, wait_until="domcontentloaded", timeout=60000)
-                await self._delay()
-                await page.mouse.wheel(0, 800)
-                await self._delay()
-                html = await page.content()
-                product_urls = self._extract_product_urls(html)
-                return [{"query": query, "url": url} for url in product_urls[:10]]
-            finally:
-                await browser.close()
+        search_url = f"{self.base_url}/search/?query={quote(query.strip())}"
+        html = await self._fetch_text(search_url)
+        if not html:
+            return []
+        prks = self._extract_prks(html)
+        search_id = self._extract_param(html, "search_id")
+        suid = self._extract_param(html, "suid")
+
+        products = []
+        for prk in prks[:8]:
+            detail = await self._fetch_product_detail(prk, search_id, suid)
+            if not detail:
+                continue
+            name = detail.get("name1") or detail.get("name2") or ""
+            products.append(
+                {
+                    "query": query,
+                    "prk": prk,
+                    "name": name,
+                    "url": self._build_product_url(prk, name),
+                }
+            )
+        return products
 
     async def extract_sellers(self, product_url: str) -> list[dict[str, Any]]:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=cfg.TOROB_HEADLESS)
-            page = await browser.new_page()
-            try:
-                await page.goto(product_url, wait_until="domcontentloaded", timeout=60000)
-                await self._delay()
-                await page.mouse.wheel(0, 600)
-                await self._delay()
-                html = await page.content()
-                sellers = self._extract_sellers_from_html(html, product_url)
-                return sellers[: cfg.TOROB_MAX_SELLERS]
-            finally:
-                await browser.close()
+        prk = self._extract_prk(product_url)
+        if not prk:
+            return []
 
-    def _extract_product_urls(self, html: str) -> list[str]:
-        hrefs = re.findall(r'href=["\'](https?://[^"\']+)["\']', html)
-        urls = [href for href in hrefs if "/p/" in href and "torob.com" in href]
-        seen = set()
-        unique = []
-        for url in urls:
-            if url not in seen:
-                seen.add(url)
-                unique.append(url)
-        return unique
+        detail = await self._fetch_product_detail(prk)
+        if not detail:
+            return []
 
-    def _extract_sellers_from_html(self, html: str, product_url: str) -> list[dict[str, Any]]:
         sellers = []
-        for match in re.finditer(r"(?P<name>[^<\n]{1,80})", html):
-            text = match.group("name").strip()
-            if "تومان" in text or "تومان" in html:
-                pass
-        price_matches = re.findall(r"(\d{2,12})\s*تومان", html)
-        price_candidates = sorted(set(price_matches), key=int)[:10]
-        for index, price in enumerate(price_candidates):
+        for item in detail.get("products_info", {}).get("result", []) or []:
             sellers.append(
                 {
-                    "name": f"seller_{index + 1}",
-                    "price": int(price),
-                    "seller_url": product_url,
+                    "name": item.get("shop_name") or item.get("name1") or "unknown",
+                    "price": int(item.get("price") or 0),
+                    "seller_url": item.get("page_url") or product_url,
                     "torob_url": product_url,
                 }
             )
-        return sellers
+        return sellers[: cfg.TOROB_MAX_SELLERS]
+
+    async def _fetch_text(self, url: str) -> str:
+        try:
+            async with httpx.AsyncClient(timeout=30, headers={"User-Agent": "Mozilla/5.0"}) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                return response.text
+        except Exception:
+            return ""
+
+    async def _fetch_product_detail(self, prk: str, search_id: str | None = None, suid: str | None = None) -> dict[str, Any] | None:
+        params = [
+            "source=next_desktop",
+            "discover_method=search",
+            "algorithm=result_adv",
+            f"prk={prk}",
+            "rank=0",
+        ]
+        if search_id:
+            params.append(f"search_id={search_id}")
+        if suid:
+            params.append(f"init_suid={suid}")
+        url = f"{self.api_base}?{'&'.join(params)}"
+        try:
+            async with httpx.AsyncClient(timeout=30, headers={"User-Agent": "Mozilla/5.0"}) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                payload = response.json()
+                return payload if isinstance(payload, dict) else None
+        except Exception:
+            return None
+
+    def _extract_prks(self, html: str) -> list[str]:
+        prks = re.findall(r"prk=([a-zA-Z0-9\-]+)", html)
+        seen = set()
+        unique = []
+        for prk in prks:
+            if prk not in seen:
+                seen.add(prk)
+                unique.append(prk)
+        return unique
+
+    def _extract_param(self, html: str, key: str) -> str | None:
+        match = re.search(rf"{key}=([a-zA-Z0-9\-]+)", html)
+        return match.group(1) if match else None
+
+    def _extract_prk(self, value: str) -> str | None:
+        if not value:
+            return None
+        match = re.search(r"prk=([a-zA-Z0-9\-]+)", value)
+        if match:
+            return match.group(1)
+        if "/p/" in value:
+            tail = value.split("/p/", 1)[1]
+            candidate = tail.split("/", 1)[0]
+            if candidate and re.fullmatch(r"[a-zA-Z0-9\-]{4,}", candidate):
+                return candidate
+        if re.fullmatch(r"[a-zA-Z0-9\-]{4,}", value):
+            return value
+        return None
+
+    def _build_product_url(self, prk: str, name: str) -> str:
+        slug = re.sub(r"[^\w]+", "-", name).strip("-").lower() or prk
+        return f"{self.base_url}/p/{prk}/{slug}"
 
     async def _delay(self) -> None:
         await asyncio.sleep(random.uniform(cfg.TOROB_MIN_DELAY, cfg.TOROB_MAX_DELAY))
