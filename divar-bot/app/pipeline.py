@@ -19,6 +19,34 @@ from app.database import CREATE_LEADS_TABLE, CREATE_SEND_LOG_TABLE, CREATE_CHECK
 
 logger = logging.getLogger(__name__)
 
+import json as _json
+
+def save_checkpoint(db_path: str, url: str, processed_urls: list) -> None:
+    import sqlite3, json
+    conn = sqlite3.connect(db_path)
+    conn.execute("""
+        INSERT INTO divar_checkpoints (key, value, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at
+    """, (f"progress:{url}", json.dumps(processed_urls)))
+    conn.commit()
+    conn.close()
+
+
+def load_checkpoint(db_path: str, url: str) -> list:
+    import sqlite3, json
+    conn = sqlite3.connect(db_path)
+    row = conn.execute(
+        "SELECT value FROM divar_checkpoints WHERE key=?",
+        (f"progress:{url}",)
+    ).fetchone()
+    conn.close()
+    if row:
+        return json.loads(row[0])
+    return []
+
+
+
 DB_PATH = os.getenv("DIVAR_DB_PATH", "data/divar_leads.db")
 MAX_ADS = int(os.getenv("DIVAR_MAX_ADS_PER_RUN", "200"))
 

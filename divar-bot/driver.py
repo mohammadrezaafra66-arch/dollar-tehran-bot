@@ -1,51 +1,52 @@
-﻿import argparse
+"""رابط استاندارد ربات دیوار.
+
+استفاده:
+  python driver.py --mode status
+  python driver.py --mode run --url "https://divar.ir/s/tehran/electronic"
+  python driver.py --mode sync
+  python driver.py --mode login --phone "09XXXXXXXXX"
+"""
+import argparse
 import json
-import sqlite3
+import sys
 import os
 
-DB_PATH = os.getenv("DIVAR_DB_PATH", "data/divar_leads.db")
+sys.path.insert(0, os.path.dirname(__file__))
 
-
-def get_status() -> dict:
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        total = conn.execute("SELECT COUNT(*) FROM divar_leads").fetchone()[0]
-        sent = conn.execute(
-            "SELECT COUNT(*) FROM divar_leads WHERE message_sent=1"
-        ).fetchone()[0]
-        ai_done = conn.execute(
-            "SELECT COUNT(*) FROM divar_leads WHERE ai_analyzed=1"
-        ).fetchone()[0]
-        conn.close()
-        return {"total_leads": total, "messages_sent": sent, "ai_analyzed": ai_done}
-    except Exception:
-        return {"total_leads": 0, "messages_sent": 0, "ai_analyzed": 0}
-
-
-def run_scrape(url: str, send_messages: bool = False) -> dict:
-    import sys
-    sys.path.insert(0, ".")
-    from pipeline import DivarPipeline
-    pipeline = DivarPipeline()
-    return pipeline.run(listing_url=url, send_messages=send_messages)
-
+from app.pipeline import DivarPipeline
+from app.api_sync import sync_to_server
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=["run", "status", "login"], default="status")
+    parser.add_argument("--mode", choices=["run", "status", "sync", "login"], default="status")
     parser.add_argument("--url", default="")
     parser.add_argument("--send-messages", action="store_true")
     parser.add_argument("--phone", default="")
     args = parser.parse_args()
 
     if args.mode == "status":
-        result = get_status()
+        from app.database import get_stats
+        result = get_stats()
     elif args.mode == "run":
-        result = run_scrape(args.url, args.send_messages)
+        assert args.url, "--url لازم است"
+        pipeline = DivarPipeline()
+        result = pipeline.run(listing_url=args.url, send_messages=args.send_messages)
+    elif args.mode == "sync":
+        result = sync_to_server()
     elif args.mode == "login":
-        from run import login_flow
-        login_flow(args.phone)
-        result = {"status": "login_done"}
+        assert args.phone, "--phone لازم است"
+        from app.divar_chat import DivarChatMessenger
+        from playwright.sync_api import sync_playwright
+        messenger = DivarChatMessenger()
+        with sync_playwright() as p:
+            context = p.chromium.launch_persistent_context(
+                user_data_dir=str(messenger.profile_path),
+                channel="msedge",
+                headless=False,
+            )
+            success = messenger.login(args.phone, context)
+            context.close()
+        result = {"login": "success" if success else "failed"}
     else:
         result = {}
 
