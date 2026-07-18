@@ -10,6 +10,7 @@ from playwright.sync_api import sync_playwright
 
 from app.listing_crawler import DivarListingCrawler, DivarListingCrawlerSettings
 from app.detail_extractor import DivarDetailExtractor
+from app.captcha_detection import detect_and_handle
 from app.anti_ban_throttling import AdaptiveAntiBanThrottler
 from app.deduplicator import LeadDeduplicator
 from app.deepseek_analyzer import DeepSeekAnalyzer
@@ -182,6 +183,11 @@ class DivarPipeline:
             extractor = DivarDetailExtractor()
             raw_leads = []
             for ad in result.ads:
+                if detect_and_handle(page):
+                    throttler.record_restriction("main")
+                    logger.warning("دیوار ما را مسدود کرد — توقف ۵ دقیقه‌ای")
+                    import time; time.sleep(300)
+                    continue
                 detail = extractor.extract(page, ad.url)
                 lead_dict = detail.to_dict()
                 lead_dict["source_url"] = ad.url
