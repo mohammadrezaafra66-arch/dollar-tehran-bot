@@ -32,11 +32,3 @@ def _guess_category(title: str) -> str:
     if any(w in title_lower for w in ["دوربین", "دی‌وی‌آر", "dvr", "nvr"]):
         return "دوربین و سیستم امنیتی"
     return "تجهیزات صوتی و تصویری"
-    title_lower = title.lower()
-    if any(w in title_lower for w in ["یخچال", "لباسشویی", "ماشین ظرفشویی"]):
-        return "لوازم خانگی"
-    if any(w in title_lower for w in ["کولر", "هواساز", "تهویه"]):
-        return "تهویه مطبوع"
-    if any(w in title_lower for w in ["مبل", "کاناپه", "میز"]):
-        return "مبلمان"
-    return "محصولات"

@@ -11,7 +11,7 @@ logging.basicConfig(
     ],
 )
 
-from pipeline import DivarPipeline
+from app.pipeline import DivarPipeline
 from app.divar_chat import DivarChatMessenger
 from playwright.sync_api import sync_playwright
 

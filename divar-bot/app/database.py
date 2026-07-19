@@ -43,3 +43,29 @@ CREATE TABLE IF NOT EXISTS divar_checkpoints (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 )
 """
+
+
+import sqlite3
+import os
+
+DB_PATH = os.getenv("DIVAR_DB_PATH", "data/divar_leads.db")
+
+def get_stats() -> dict:
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        total = conn.execute("SELECT COUNT(*) FROM divar_leads").fetchone()[0]
+        synced = conn.execute(
+            "SELECT COUNT(*) FROM divar_leads WHERE sync_status='synced'"
+        ).fetchone()[0]
+        messages = conn.execute(
+            "SELECT COUNT(*) FROM divar_leads WHERE message_sent=1"
+        ).fetchone()[0]
+        conn.close()
+        return {
+            "total_leads": total,
+            "synced": synced,
+            "messages_sent": messages,
+            "db_path": DB_PATH,
+        }
+    except Exception:
+        return {"total_leads": 0, "synced": 0, "messages_sent": 0}

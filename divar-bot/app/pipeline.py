@@ -179,12 +179,16 @@ class DivarPipeline:
             result = crawler.crawl(page, listing_url)
             stats["discovered"] = len(result.ads)
             logger.info(f"   {stats['discovered']} آگهی پیدا شد")
+            already_done = load_checkpoint(DB_PATH, listing_url)
             logger.info("مرحله ۲: استخراج اطلاعات فروشندگان")
             extractor = DivarDetailExtractor()
             raw_leads = []
-            for ad in result.ads:
+            for i, ad in enumerate(result.ads):
+                if ad.url in already_done:
+                    logger.info(f"   checkpoint: رد شد {ad.url}")
+                    continue
                 if detect_and_handle(page):
-                    throttler.record_restriction("main")
+                    self.throttler.record_restriction("main")
                     logger.warning("دیوار ما را مسدود کرد — توقف ۵ دقیقه‌ای")
                     import time; time.sleep(300)
                     continue
@@ -193,6 +197,9 @@ class DivarPipeline:
                 lead_dict["source_url"] = ad.url
                 raw_leads.append(lead_dict)
                 stats["extracted"] += 1
+                already_done.append(ad.url)
+                if i % 10 == 0:
+                    save_checkpoint(DB_PATH, listing_url, already_done)
                 if detail.extraction_status == "ok":
                     self.throttler.record_success("main")
                 else:
