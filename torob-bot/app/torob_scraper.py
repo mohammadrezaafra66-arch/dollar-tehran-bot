@@ -6,6 +6,7 @@ from typing import Any
 from urllib.parse import quote
 
 import httpx
+from app.seller_extractor import SellerExtractor
 
 from app.config import cfg
 
@@ -107,7 +108,7 @@ class TorobScraper:
                 except Exception:
                     payload = None
 
-            sellers = self._parse_sellers(payload, product_url)
+            sellers = SellerExtractor().parse(payload, product_url)
             await self._delay()
             return sellers
         except Exception:
