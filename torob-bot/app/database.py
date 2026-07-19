@@ -52,6 +52,34 @@ class TorobDatabase:
                 )
                 """
             )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS torob_price_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    product_url TEXT,
+                    seller_url TEXT,
+                    price_value INTEGER,
+                    price_text TEXT,
+                    recorded_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS torob_website_extractions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    seller_id INTEGER,
+                    external_url TEXT,
+                    phone TEXT,
+                    email TEXT,
+                    instagram TEXT,
+                    telegram TEXT,
+                    whatsapp TEXT,
+                    crawl_status TEXT,
+                    crawled_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
             conn.commit()
 
     def _connect(self) -> sqlite3.Connection:
