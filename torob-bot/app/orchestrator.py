@@ -27,7 +27,8 @@ class Orchestrator:
 
         for product in product_results[:3]:
             try:
-                seller_source = product.get("prk") or product.get("url")
+                # prefer full product URL (contains slug) so seller extraction works
+                seller_source = product.get("url") or product.get("prk")
                 sellers = await self.scraper.extract_sellers(seller_source)
                 for seller in sellers[: cfg.TOROB_MAX_SELLERS]:
                     lead = {
