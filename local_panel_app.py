@@ -203,3 +203,85 @@ def create_sample_logs_registry(x_panel_password: str | None = Header(default=No
     data = {'items': [{'level': 'INFO', 'message': 'Google Maps panel log registry initialized'}]}
     write_json(LOGS_PATH, data)
     return {'saved': True, 'data': data}
+
+# ─── Divar API ───────────────────────────────────────────────
+import sqlite3, subprocess, sys
+from pathlib import Path
+
+DIVAR_DB_PATH = BASE_DIR / 'data' / 'divar_leads.db'
+DIVAR_LOG_PATH = BASE_DIR / 'logs' / 'divar_bot.log'
+DIVAR_RUN_PY   = BASE_DIR / 'divar-bot' / 'run.py'
+
+def divar_db():
+    return sqlite3.connect(str(DIVAR_DB_PATH))
+
+@app.get('/api/divar/stats')
+def divar_stats():
+    if not DIVAR_DB_PATH.exists():
+        return {"total_leads": 0, "synced": 0, "messages_sent": 0, "pending": 0, "failed": 0}
+    conn = divar_db()
+    total    = conn.execute("SELECT COUNT(*) FROM divar_leads").fetchone()[0]
+    synced   = conn.execute("SELECT COUNT(*) FROM divar_leads WHERE sync_status='synced'").fetchone()[0]
+    messages = conn.execute("SELECT COUNT(*) FROM divar_leads WHERE message_sent=1").fetchone()[0]
+    pending  = conn.execute("SELECT COUNT(*) FROM divar_leads WHERE extraction_status='pending'").fetchone()[0]
+    failed   = conn.execute("SELECT COUNT(*) FROM divar_leads WHERE extraction_status='failed'").fetchone()[0]
+    conn.close()
+    return {"total_leads": total, "synced": synced, "messages_sent": messages, "pending": pending, "failed": failed}
+
+@app.get('/api/divar/leads')
+def divar_leads(limit: int = 50, offset: int = 0, status: str | None = None):
+    if not DIVAR_DB_PATH.exists():
+        return {"items": [], "total": 0}
+    conn = divar_db()
+    where = f"WHERE extraction_status='{status}'" if status else ""
+    total = conn.execute(f"SELECT COUNT(*) FROM divar_leads {where}").fetchone()[0]
+    rows  = conn.execute(f"""
+        SELECT id, title, seller_name, phone, city, district,
+               price_text, extraction_status, message_sent,
+               message_status, sync_status, source_url, created_at
+        FROM divar_leads {where}
+        ORDER BY id DESC LIMIT ? OFFSET ?
+    """, (limit, offset)).fetchall()
+    conn.close()
+    keys = ["id","title","seller_name","phone","city","district",
+            "price_text","extraction_status","message_sent",
+            "message_status","sync_status","source_url","created_at"]
+    return {"items": [dict(zip(keys, r)) for r in rows], "total": total}
+
+@app.get('/api/divar/logs')
+def divar_logs(lines: int = 100):
+    if not DIVAR_LOG_PATH.exists():
+        return {"lines": []}
+    all_lines = DIVAR_LOG_PATH.read_text(encoding='utf-8', errors='replace').splitlines()
+    return {"lines": all_lines[-lines:]}
+
+@app.post('/api/divar/run')
+def divar_run(body: dict, x_panel_password: str | None = Header(default=None)):
+    require_admin(x_panel_password)
+    url = body.get("url", "")
+    if not url:
+        raise HTTPException(status_code=400, detail="url الزامی است")
+    send  = body.get("send_messages", False)
+    no_ai = body.get("no_ai", False)
+    cmd   = [sys.executable, str(DIVAR_RUN_PY), "--url", url]
+    if send:  cmd.append("--send-messages")
+    if no_ai: cmd.append("--no-ai")
+    try:
+        proc = subprocess.Popen(cmd, cwd=str(DIVAR_RUN_PY.parent),
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        return {"started": True, "pid": proc.pid, "cmd": " ".join(cmd)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get('/api/divar/send-log')
+def divar_send_log(limit: int = 50):
+    if not DIVAR_DB_PATH.exists():
+        return {"items": []}
+    conn = divar_db()
+    rows = conn.execute("""
+        SELECT id, lead_id, phone, message_text, status, error_msg, sent_at
+        FROM divar_send_log ORDER BY id DESC LIMIT ?
+    """, (limit,)).fetchall()
+    conn.close()
+    keys = ["id","lead_id","phone","message_text","status","error_msg","sent_at"]
+    return {"items": [dict(zip(keys, r)) for r in rows]}
