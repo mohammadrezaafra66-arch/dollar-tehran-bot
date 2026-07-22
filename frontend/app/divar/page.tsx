@@ -6,6 +6,7 @@ import RunForm from "@/components/divar/RunForm";
 import LeadsTable from "@/components/divar/LeadsTable";
 import LogsViewer from "@/components/divar/LogsViewer";
 import SendLogTable from "@/components/divar/SendLogTable";
+import SessionPanel from "@/components/divar/SessionPanel";
 
 type Tab = "leads" | "run" | "logs" | "sendlog";
 
@@ -24,6 +25,8 @@ export default function DivarPage() {
           <h1 className="text-2xl font-bold text-gray-900">پنل مدیریت ربات دیوار</h1>
           <p className="text-gray-500 text-sm mt-1">مشاهده، اجرا و مانیتورینگ ربات دیوار</p>
         </header>
+
+        <SessionPanel />
 
         {stats && <StatsBar stats={stats} />}
 

@@ -20,6 +20,20 @@ export const api = {
   health: () => get<{ status: string }>("/health"),
   divar: {
     stats: () => get<DivarStats>("/divar/stats"),
+    sessionStatus: () => get<{
+      logged_in: boolean;
+      profile_path: string;
+      session_files_found: number;
+      numbered_profiles: {
+        profile_id: string;
+        reputation_score: number;
+        success_count: number;
+        failure_count: number;
+        available: boolean;
+      }[];
+      login_instructions: string[];
+    }>('/divar/session-status'),
+    login: (phone: string) => post<{started: boolean; message: string}>('/divar/login', { phone }),
     leads: (params?: { limit?: number; offset?: number; status?: string }) => {
       const q = new URLSearchParams();
       if (params?.limit) q.set("limit", String(params.limit));

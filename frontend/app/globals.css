@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -19,8 +20,16 @@
   }
 }
 
+* {
+  box-sizing: border-box;
+}
+
 body {
   background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: #1f2937;
+  font-family: "Vazirmatn", sans-serif;
+}
+
+table {
+  color: #1f2937;
 }

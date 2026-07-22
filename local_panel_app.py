@@ -286,6 +286,93 @@ def divar_send_log(limit: int = 50):
     keys = ["id","lead_id","phone","message_text","status","error_msg","sent_at"]
     return {"items": [dict(zip(keys, r)) for r in rows]}
 
+
+DIVAR_PROFILE_DIR = BASE_DIR / 'runtime' / 'profiles' / 'divar' / 'default'
+
+
+@app.get('/api/divar/session-status')
+def divar_session_status():
+    profile_dir = DIVAR_PROFILE_DIR
+    exists = profile_dir.exists() and profile_dir.is_dir()
+
+    session_files = []
+    if exists:
+        session_files = list(profile_dir.glob('**/*.sqlite')) + \
+            list(profile_dir.glob('**/Cookies')) + \
+            list(profile_dir.glob('**/Local State')) + \
+            list(profile_dir.glob('**/Default/Cookies'))
+
+    has_session = len(session_files) > 0
+
+    profiles_dir = BASE_DIR / 'runtime' / 'profiles' / 'divar'
+    numbered_profiles = []
+    for index in range(1, 6):
+        profile_path = profiles_dir / f'divar-profile-{index}'
+        metadata_path = profile_path / 'metadata.json'
+        if metadata_path.exists():
+            try:
+                data = json.loads(metadata_path.read_text(encoding='utf-8'))
+                numbered_profiles.append({
+                    'profile_id': f'divar-profile-{index}',
+                    'reputation_score': float(data.get('reputation_score', 1.0)),
+                    'success_count': int(data.get('success_count', 0)),
+                    'failure_count': int(data.get('failure_count', 0)),
+                    'available': True,
+                })
+            except Exception:
+                continue
+
+    return {
+        'logged_in': has_session,
+        'profile_path': str(profile_dir),
+        'session_files_found': len(session_files),
+        'numbered_profiles': numbered_profiles,
+        'login_instructions': [
+            'باز کردن ترمینال در Codespace',
+            'اجرای دستور: cd /workspaces/old-dollar-tehran-bot && python3 divar-bot/run.py --login --phone 09XXXXXXXXX',
+            'وارد کردن کد OTP که از دیوار دریافت کردید',
+            'کلیک روی بررسی مجدد وضعیت در پنل'
+        ]
+    }
+
+
+@app.post('/api/divar/login')
+def divar_login(body: dict):
+    phone = str(body.get('phone', '')).strip()
+    if not phone:
+        raise HTTPException(status_code=400, detail='phone الزامی است')
+
+    env = os.environ.copy()
+    env['DIVAR_HEADLESS'] = '1'
+    cmd = [sys.executable, str(DIVAR_RUN_PY), '--login', '--phone', phone]
+    try:
+        subprocess.Popen(
+            cmd,
+            cwd=str(BASE_DIR),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            env=env,
+            start_new_session=True,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    message = (
+        'ورود به دیوار در حالت غیرهمزمان شروع شد. در Codespace، ورود باید دستی انجام شود.\n'
+        f'در ترمینال زیر را اجرا کنید:\ncd {BASE_DIR} && python3 divar-bot/run.py --login --phone {phone}\n'
+        'پس از دریافت کد OTP، آن را در ترمینال وارد کنید و سپس دکمه بررسی مجدد وضعیت را بزنید.'
+    )
+    return {"started": True, "message": message}
+
+
+@app.post('/api/divar/session-import')
+def divar_session_import(body: dict | None = None):
+    profile_dir = DIVAR_PROFILE_DIR
+    exists = profile_dir.exists() and profile_dir.is_dir()
+    has_files = bool(list(profile_dir.iterdir())) if exists else False
+    note = str((body or {}).get('note', '')) if body else ''
+    return {"logged_in": exists and has_files, "profile_path": str(profile_dir), "note": note}
+
 # ─── Torob API ───────────────────────────────────────────────
 TOROB_DB_PATH  = BASE_DIR / 'data' / 'torob.db'
 TOROB_LOG_PATH = BASE_DIR / 'logs' / 'torob_bot.log'
