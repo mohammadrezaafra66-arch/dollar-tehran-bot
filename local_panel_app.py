@@ -285,3 +285,80 @@ def divar_send_log(limit: int = 50):
     conn.close()
     keys = ["id","lead_id","phone","message_text","status","error_msg","sent_at"]
     return {"items": [dict(zip(keys, r)) for r in rows]}
+
+# ─── Torob API ───────────────────────────────────────────────
+TOROB_DB_PATH  = BASE_DIR / 'data' / 'torob.db'
+TOROB_LOG_PATH = BASE_DIR / 'logs' / 'torob_bot.log'
+TOROB_RUN_PY   = BASE_DIR / 'torob-bot' / 'run.py'
+
+def torob_db():
+    return sqlite3.connect(str(TOROB_DB_PATH))
+
+@app.get('/api/torob/stats')
+def torob_stats():
+    if not TOROB_DB_PATH.exists():
+        return {"total_sellers": 0, "synced": 0, "total_reports": 0, "total_history": 0}
+    conn = torob_db()
+    sellers  = conn.execute("SELECT COUNT(*) FROM seller_leads").fetchone()[0]
+    synced   = conn.execute("SELECT COUNT(*) FROM seller_leads WHERE sync_status='synced'").fetchone()[0]
+    reports  = conn.execute("SELECT COUNT(*) FROM price_reports").fetchone()[0]
+    history  = conn.execute("SELECT COUNT(*) FROM torob_price_history").fetchone()[0]
+    conn.close()
+    return {"total_sellers": sellers, "synced": synced, "total_reports": reports, "total_history": history}
+
+@app.get('/api/torob/sellers')
+def torob_sellers(limit: int = 50, offset: int = 0, crawl_status: str | None = None):
+    if not TOROB_DB_PATH.exists():
+        return {"items": [], "total": 0}
+    conn = torob_db()
+    where = f"WHERE crawl_status='{crawl_status}'" if crawl_status else ""
+    total = conn.execute(f"SELECT COUNT(*) FROM seller_leads {where}").fetchone()[0]
+    rows  = conn.execute(f"""
+        SELECT id, store_name, phone, email, store_url, torob_url,
+               price_on_torob, instagram, telegram, whatsapp,
+               crawl_status, sync_status, created_at
+        FROM seller_leads {where}
+        ORDER BY id DESC LIMIT ? OFFSET ?
+    """, (limit, offset)).fetchall()
+    conn.close()
+    keys = ["id","store_name","phone","email","store_url","torob_url",
+            "price_on_torob","instagram","telegram","whatsapp",
+            "crawl_status","sync_status","created_at"]
+    return {"items": [dict(zip(keys, r)) for r in rows], "total": total}
+
+@app.get('/api/torob/reports')
+def torob_reports(limit: int = 50, offset: int = 0):
+    if not TOROB_DB_PATH.exists():
+        return {"items": [], "total": 0}
+    conn = torob_db()
+    total = conn.execute("SELECT COUNT(*) FROM price_reports").fetchone()[0]
+    rows  = conn.execute("""
+        SELECT id, product_code, product_name, afrakala_price, lowest_rival,
+               avg_rival, afrakala_rank, rival_count, diff_percent, sync_status, created_at
+        FROM price_reports ORDER BY id DESC LIMIT ? OFFSET ?
+    """, (limit, offset)).fetchall()
+    conn.close()
+    keys = ["id","product_code","product_name","afrakala_price","lowest_rival",
+            "avg_rival","afrakala_rank","rival_count","diff_percent","sync_status","created_at"]
+    return {"items": [dict(zip(keys, r)) for r in rows], "total": total}
+
+@app.get('/api/torob/logs')
+def torob_logs(lines: int = 100):
+    if not TOROB_LOG_PATH.exists():
+        return {"lines": []}
+    all_lines = TOROB_LOG_PATH.read_text(encoding='utf-8', errors='replace').splitlines()
+    return {"lines": all_lines[-lines:]}
+
+@app.post('/api/torob/run')
+def torob_run(body: dict, x_panel_password: str | None = Header(default=None)):
+    require_admin(x_panel_password)
+    query = body.get("query", "")
+    if not query:
+        raise HTTPException(status_code=400, detail="query الزامی است")
+    cmd = [sys.executable, str(TOROB_RUN_PY), query]
+    try:
+        proc = subprocess.Popen(cmd, cwd=str(TOROB_RUN_PY.parent),
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        return {"started": True, "pid": proc.pid, "cmd": " ".join(cmd)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

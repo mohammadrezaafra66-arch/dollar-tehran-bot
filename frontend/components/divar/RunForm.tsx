@@ -1,12 +1,12 @@
 "use client";
 import { useState } from "react";
-import { api, DivarRunResponse } from "@/lib/api";
+import { api, type RunResponse } from "@/lib/api";
 
 export default function RunForm() {
   const [url, setUrl] = useState("https://divar.ir/s/tehran");
   const [sendMessages, setSendMessages] = useState(false);
   const [noAi, setNoAi] = useState(false);
-  const [result, setResult] = useState<DivarRunResponse | null>(null);
+  const [result, setResult] = useState<RunResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 

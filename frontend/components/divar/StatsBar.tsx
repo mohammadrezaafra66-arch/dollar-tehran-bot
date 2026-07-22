@@ -1,5 +1,5 @@
 "use client";
-import { DivarStats } from "@/lib/api";
+import type { DivarStats } from "@/lib/api";
 
 interface Props { stats: DivarStats }
 
@@ -15,7 +15,7 @@ export default function StatsBar({ stats }: Props) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
       {cards.map(({ key, label, color }) => (
-        <div key={key} className={`rounded-xl p-4 ${color}`}>
+        <div key={key} className={`rounded-xl p-4 ${color} w-full`}>
           <div className="text-2xl font-bold">{stats[key]}</div>
           <div className="text-xs mt-1 opacity-75">{label}</div>
         </div>

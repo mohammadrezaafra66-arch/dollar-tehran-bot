@@ -1,12 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
-import { api, DivarStats } from "@/lib/api";
+import { api, type DivarStats } from "@/lib/api";
 import StatsBar from "@/components/divar/StatsBar";
 import RunForm from "@/components/divar/RunForm";
 import LeadsTable from "@/components/divar/LeadsTable";
 import LogsViewer from "@/components/divar/LogsViewer";
+import SendLogTable from "@/components/divar/SendLogTable";
 
-type Tab = "leads" | "run" | "logs";
+type Tab = "leads" | "run" | "logs" | "sendlog";
 
 export default function DivarPage() {
   const [stats, setStats] = useState<DivarStats | null>(null);
@@ -27,7 +28,7 @@ export default function DivarPage() {
         {stats && <StatsBar stats={stats} />}
 
         <nav className="flex gap-2 mb-6">
-          {([["leads","لیدها"], ["run","اجرا"], ["logs","لاگ‌ها"]] as [Tab, string][]).map(([id, label]) => (
+          {([["leads","لیدها"], ["run","اجرا"], ["logs","لاگ‌ها"], ["sendlog","ارسال‌ها"]] as [Tab, string][]).map(([id, label]) => (
             <button key={id} onClick={() => setTab(id)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 tab === id ? "bg-blue-600 text-white" : "bg-white border text-gray-600 hover:bg-gray-50"
@@ -40,6 +41,7 @@ export default function DivarPage() {
         {tab === "leads" && <LeadsTable />}
         {tab === "run" && <RunForm />}
         {tab === "logs" && <LogsViewer />}
+        {tab === "sendlog" && <SendLogTable />}
       </div>
     </div>
   );
