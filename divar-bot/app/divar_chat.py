@@ -48,8 +48,10 @@ class DivarChatMessenger:
         try:
             page.goto(f"{DIVAR_URL}/login", wait_until="domcontentloaded")
             time.sleep(2)
-            phone_input = page.locator("input[type='tel'], input[placeholder*='موبایل']").first
+            phone_input = page.locator("input[type='tel'], input[placeholder*='موبایل'], input[name*='phone'], input[name*='mobile'], input").first
             if phone_input.count() == 0:
+                page.screenshot(path="logs/divar_login_error.png")
+                Path("logs/divar_login_error.html").write_text(page.content(), encoding="utf-8")
                 logger.error("فیلد شماره تلفن پیدا نشد")
                 return False
             phone_input.fill(phone)
@@ -141,7 +143,7 @@ class DivarChatMessenger:
         with sync_playwright() as p:
             context = p.chromium.launch_persistent_context(
                 user_data_dir=str(self.profile_path),
-                channel="msedge", headless=False,
+                headless=False,
                 slow_mo=random.randint(100, 300),
                 locale="fa-IR",
                 timezone_id="Asia/Tehran",

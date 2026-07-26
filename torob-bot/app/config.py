@@ -1,11 +1,27 @@
 import os
 from dataclasses import dataclass
+from pathlib import Path
+
+
+def _load_env_file() -> None:
+    env_path = Path(__file__).resolve().parents[1] / ".env"
+    if not env_path.exists():
+        return
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+_load_env_file()
 
 
 @dataclass
 class Config:
-    AFRAKALA_API_URL: str = os.getenv("AFRAKALA_API_URL", "http://192.168.170.8:8000")
-    AFRAKALA_API_KEY: str = os.getenv("AFRAKALA_API_KEY", "")
+    AFRAKALA_API_URL: str = os.getenv("AFRA_API_URL") or os.getenv("AFRAKALA_API_URL", "http://192.168.170.8:8000")
+    AFRAKALA_API_KEY: str = os.getenv("AFRA_API_KEY") or os.getenv("AFRAKALA_API_KEY", "")
 
     TOROB_MIN_DELAY: float = float(os.getenv("TOROB_MIN_DELAY_SECONDS", "3"))
     TOROB_MAX_DELAY: float = float(os.getenv("TOROB_MAX_DELAY_SECONDS", "8"))
@@ -16,7 +32,7 @@ class Config:
     TOROB_HEADLESS: bool = os.getenv("TOROB_HEADLESS", "true").lower() == "true"
     CRAWL_SELLER_SITES: bool = os.getenv("CRAWL_SELLER_SITES", "true").lower() == "true"
 
-    DB_PATH: str = "data/torob.db"
+    DB_PATH: str = os.getenv("TOROB_DB_PATH", "data/torob.db")
     CHECKPOINT_FILE: str = "data/checkpoints/checkpoint.json"
     OUTPUT_DIR: str = "output"
 

@@ -1,129 +1,119 @@
 "use client";
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
-
-interface SessionStatus {
-  logged_in: boolean;
-  profile_path: string;
-  session_files_found: number;
-  numbered_profiles: {
-    profile_id: string;
-    reputation_score: number;
-    success_count: number;
-    failure_count: number;
-    available: boolean;
-  }[];
-  login_instructions: string[];
-}
+import { useEffect, useState, useCallback } from "react";
+import { api, type DivarAccount } from "@/lib/api";
 
 export default function SessionPanel() {
-  const [status, setStatus] = useState<SessionStatus | null>(null);
+  const [accounts, setAccounts] = useState<DivarAccount[]>([]);
   const [loading, setLoading] = useState(false);
-  const [phone, setPhone] = useState("09XXXXXXXXX");
+  const [loginModal, setLoginModal] = useState<string | null>(null);
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [loginStep, setLoginStep] = useState<"phone"|"otp"|"done">("phone");
+  const [loginOutput, setLoginOutput] = useState<string[]>([]);
   const [message, setMessage] = useState("");
 
-  async function refreshStatus() {
+  const load = useCallback(async () => {
     setLoading(true);
-    try {
-      const res = await api.divar.sessionStatus();
-      setStatus(res);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void refreshStatus();
+    try { const res = await api.divar.accounts(); setAccounts(res.items); }
+    finally { setLoading(false); }
   }, []);
 
-  async function handleLogin() {
+  useEffect(() => { void load(); }, [load]);
+
+  async function startLogin(profileId: string) {
     if (!phone.trim()) return;
-    setLoading(true);
     try {
-      const res = await api.divar.login(phone.trim());
-      setMessage(res.message);
-    } finally {
-      setLoading(false);
-    }
+      await api.divar.loginStart(profileId, phone);
+      setLoginStep("otp");
+      pollStatus(profileId);
+    } catch (err) { setMessage(err instanceof Error ? err.message : "خطا"); }
   }
 
-  const loggedIn = Boolean(status?.logged_in && status.session_files_found > 0);
+  function pollStatus(profileId: string) {
+    const interval = setInterval(async () => {
+      const res = await api.divar.loginStatus(profileId);
+      setLoginOutput(res.output);
+      if (!res.running) {
+        clearInterval(interval);
+        if (res.success) { setLoginStep("done"); setTimeout(() => { setLoginModal(null); void load(); }, 2000); }
+      }
+    }, 2000);
+  }
+
+  async function sendOtp(profileId: string) {
+    try { await api.divar.loginOtp(profileId, otp); setMessage("OTP ارسال شد"); }
+    catch (err) { setMessage(err instanceof Error ? err.message : "خطا"); }
+  }
+
+  async function deleteAccount(profileId: string) {
+    if (!confirm("آیا مطمئنید؟")) return;
+    try { await api.divar.deleteAccount(profileId); await load(); }
+    catch (err) { setMessage(err instanceof Error ? err.message : "خطا"); }
+  }
+
+  const reputationColor = (score: number) =>
+    score > 0.7 ? "bg-green-500" : score > 0.3 ? "bg-yellow-500" : "bg-red-500";
 
   return (
-    <div className="bg-white rounded-xl border p-5 mb-6" dir="rtl">
-      <div className={`rounded-lg border px-4 py-3 mb-4 ${loggedIn ? "bg-green-50 border-green-200 text-green-800" : "bg-orange-50 border-orange-200 text-orange-800"}`}>
-        {loggedIn ? "✅ احتمالاً به دیوار وارد شده‌اید — session فعال است" : "⚠️ session دیوار یافت نشد — شماره تلفن‌ها استخراج نخواهند شد"}
+    <div dir="rtl">
+      {message && <div className="mb-4 p-3 bg-blue-50 text-blue-700 rounded-lg text-sm">{message}</div>}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {accounts.map(acc => (
+          <div key={acc.profile_id} className="bg-white rounded-xl border p-4">
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <div className="font-bold text-sm">{acc.profile_id}</div>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${acc.available ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                  {acc.available ? "فعال" : "در cooldown"}
+                </span>
+              </div>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${acc.has_session_files ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}`}>
+                {acc.has_session_files ? "session دارد" : "بدون session"}
+              </span>
+            </div>
+            <div className="mb-3">
+              <div className="flex justify-between text-xs text-gray-500 mb-1">
+                <span>امتیاز: {acc.reputation_score.toFixed(2)}</span>
+                <span>✅{acc.success_count} ❌{acc.failure_count}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className={`h-2 rounded-full ${reputationColor(acc.reputation_score)}`}
+                  style={{ width: `${acc.reputation_score * 100}%` }} />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => { setLoginModal(acc.profile_id); setLoginStep("phone"); setLoginOutput([]); setOtp(""); setPhone(""); }}
+                className="flex-1 bg-blue-600 text-white rounded-lg py-1.5 text-xs">ورود</button>
+              <button onClick={() => void deleteAccount(acc.profile_id)}
+                className="flex-1 bg-red-100 text-red-700 rounded-lg py-1.5 text-xs">حذف</button>
+            </div>
+          </div>
+        ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <button onClick={() => void refreshStatus()} className="border rounded-lg px-3 py-2 text-sm" disabled={loading}>
-          {loading ? "در حال بررسی..." : "🔄 بررسی مجدد وضعیت"}
-        </button>
-        <div className="text-xs text-gray-500">مسیر پروفایل: {status?.profile_path || "—"}</div>
-      </div>
-
-      {!loggedIn && (
-        <div className="space-y-3 text-sm text-gray-700">
-          <div className="rounded-lg border bg-gray-900 text-gray-100 p-3">
-            <div className="font-semibold mb-2">برای ورود به دیوار مراحل زیر را دنبال کنید:</div>
-            <ol className="list-decimal list-inside space-y-1 text-xs font-mono">
-              {status?.login_instructions?.map((step, index) => (
-                <li key={step}>{index + 1}. {step}</li>
-              ))}
-            </ol>
-          </div>
-
-          <div className="rounded-lg border border-dashed p-3 text-xs font-mono bg-gray-50 text-gray-800">
-            cd /workspaces/old-dollar-tehran-bot && python3 divar-bot/run.py --login --phone 09XXXXXXXXX
-          </div>
-
-          <div className="text-xs text-gray-600">⚠️ این دستور نیاز به مرورگر گرافیکی دارد — در محیط Codespace باید از xvfb-run استفاده کنید یا session را از محیط local انتقال دهید</div>
-
-          <div className="flex flex-col sm:flex-row gap-2">
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="border rounded-lg px-3 py-2 text-sm w-full sm:w-64"
-              placeholder="09XXXXXXXXX"
-            />
-            <button onClick={() => void handleLogin()} className="bg-blue-600 text-white rounded-lg px-3 py-2 text-sm" disabled={loading}>
-              شروع ورود
-            </button>
-          </div>
-
-          {message && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs whitespace-pre-line">{message}</div>}
-        </div>
-      )}
-
-      {status?.numbered_profiles && status.numbered_profiles.length > 0 && (
-        <div className="mt-4">
-          <div className="text-sm font-semibold mb-2">پروفایل‌های دیوار</div>
-          <div className="overflow-x-auto rounded-lg border">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 text-gray-700">
-                <tr>
-                  <th className="px-3 py-2 text-right">profile_id</th>
-                  <th className="px-3 py-2 text-right">reputation</th>
-                  <th className="px-3 py-2 text-right">موفق</th>
-                  <th className="px-3 py-2 text-right">ناموفق</th>
-                  <th className="px-3 py-2 text-right">وضعیت</th>
-                </tr>
-              </thead>
-              <tbody>
-                {status.numbered_profiles.map((profile) => {
-                  const reputationClass = profile.reputation_score > 0.7 ? "text-green-700" : profile.reputation_score >= 0.3 ? "text-yellow-700" : "text-red-700";
-                  return (
-                    <tr key={profile.profile_id} className="border-t bg-white text-gray-800">
-                      <td className="px-3 py-2">{profile.profile_id}</td>
-                      <td className={`px-3 py-2 font-medium ${reputationClass}`}>{profile.reputation_score.toFixed(2)}</td>
-                      <td className="px-3 py-2">{profile.success_count}</td>
-                      <td className="px-3 py-2">{profile.failure_count}</td>
-                      <td className="px-3 py-2">{profile.available ? "در دسترس" : "استراحت"}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+      {loginModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" dir="rtl">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <h3 className="font-bold mb-4">ورود به دیوار — {loginModal}</h3>
+            {loginStep === "phone" && (
+              <div className="space-y-3">
+                <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="09XXXXXXXXX"
+                  className="w-full border rounded-lg px-3 py-2 text-sm" />
+                <button onClick={() => void startLogin(loginModal)}
+                  className="w-full bg-blue-600 text-white rounded-lg py-2 text-sm">شروع لاگین</button>
+              </div>
+            )}
+            {loginStep === "otp" && (
+              <div className="space-y-3">
+                <pre className="bg-gray-950 text-green-400 text-xs p-3 rounded-lg max-h-40 overflow-auto">{loginOutput.join("\n")}</pre>
+                <input value={otp} onChange={e => setOtp(e.target.value)} placeholder="کد OTP"
+                  className="w-full border rounded-lg px-3 py-2 text-sm" />
+                <button onClick={() => void sendOtp(loginModal)}
+                  className="w-full bg-green-600 text-white rounded-lg py-2 text-sm">تأیید کد</button>
+              </div>
+            )}
+            {loginStep === "done" && <div className="text-center text-green-600 font-bold">✅ لاگین موفق!</div>}
+            <button onClick={() => setLoginModal(null)} className="mt-3 w-full border rounded-lg py-2 text-sm text-gray-600">بستن</button>
           </div>
         </div>
       )}

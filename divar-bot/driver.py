@@ -41,7 +41,6 @@ if __name__ == "__main__":
         with sync_playwright() as p:
             context = p.chromium.launch_persistent_context(
                 user_data_dir=str(messenger.profile_path),
-                channel="msedge",
                 headless=False,
             )
             success = messenger.login(args.phone, context)

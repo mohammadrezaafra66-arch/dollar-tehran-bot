@@ -11,10 +11,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fa" dir="rtl">
       <body className="bg-gray-50">
-        <nav className="bg-white border-b px-6 py-3 flex gap-4 text-sm font-medium sticky top-0 z-10">
-          <span className="text-gray-400 font-bold ml-4">پنل افراکالا</span>
-          <Link href="/divar" className="text-gray-700 hover:text-blue-600">دیوار</Link>
-          <Link href="/torob" className="text-gray-700 hover:text-blue-600">ترب</Link>
+        <nav className="bg-white border-b px-6 py-3 flex gap-6 items-center sticky top-0 z-10">
+          <Link href="/" className="font-bold text-gray-900">افراکالا</Link>
+          <Link href="/" className="text-sm text-gray-600 hover:text-blue-600">داشبورد</Link>
+          <Link href="/divar" className="text-sm text-gray-600 hover:text-blue-600">دیوار</Link>
+          <Link href="/torob" className="text-sm text-gray-600 hover:text-blue-600">ترب</Link>
         </nav>
         {children}
       </body>

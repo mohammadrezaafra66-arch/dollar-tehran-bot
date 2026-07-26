@@ -21,7 +21,7 @@ def login_flow(phone: str) -> None:
         messenger = DivarChatMessenger()
         context = p.chromium.launch_persistent_context(
             user_data_dir=str(messenger.profile_path),
-            channel="msedge", headless=False,
+            headless=False,
         )
         success = messenger.login(phone, context)
         context.close()

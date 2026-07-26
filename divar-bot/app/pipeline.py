@@ -158,15 +158,14 @@ class DivarPipeline:
             "ai_analyzed": 0, "messages_sent": 0, "messages_failed": 0,
             "started_at": datetime.now().isoformat(),
         }
-        profile_dir = os.getenv("DIVAR_PROFILE_DIR", "runtime/profiles/divar")
+        profile_dir = os.getenv("DIVAR_PROFILE_DIR", "runtime/profiles/divar/divar-profile-1")
         profile_path = Path(profile_dir) / "default"
         profile_path.mkdir(parents=True, exist_ok=True)
         with sync_playwright() as p:
             context = p.chromium.launch_persistent_context(
                 user_data_dir=str(profile_path),
-                channel="msedge",
                 proxy={"server": os.getenv("HTTP_PROXY", "")} if os.getenv("HTTP_PROXY", "") else None,
-                headless=False,
+                headless=True,
                 slow_mo=200,
                 locale="fa-IR",
                 timezone_id="Asia/Tehran",
