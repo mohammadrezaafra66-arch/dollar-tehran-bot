@@ -161,7 +161,7 @@ class DivarPipeline:
             "started_at": datetime.now().isoformat(),
         }
         profile_dir = os.getenv("DIVAR_PROFILE_DIR", f"runtime/profiles/divar/{profile_id}")
-        profile_path = Path(profile_dir) / "default"
+        profile_path = Path(profile_dir)
         profile_path.mkdir(parents=True, exist_ok=True)
         with sync_playwright() as p:
             context = p.chromium.launch_persistent_context(

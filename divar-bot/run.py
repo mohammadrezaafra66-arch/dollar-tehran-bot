@@ -20,7 +20,11 @@ from pathlib import Path
 
 def login_flow(phone: str, profile_id: str = "divar-profile-1") -> None:
     profile_base = os.getenv("DIVAR_PROFILE_DIR", "runtime/profiles/divar")
-    profile_path = Path(profile_base) / profile_id
+    # اگه DIVAR_PROFILE_DIR قبلاً شامل profile_id هست، از همون استفاده کن
+    if profile_base.endswith(profile_id):
+        profile_path = Path(profile_base)
+    else:
+        profile_path = Path(profile_base) / profile_id
     profile_path.mkdir(parents=True, exist_ok=True)
 
     with sync_playwright() as p:
