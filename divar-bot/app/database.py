@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS divar_leads (
     message_sent INTEGER DEFAULT 0,
     message_sent_at TEXT,
     message_status TEXT,
+    profile_id TEXT DEFAULT 'divar-profile-1',
     sync_status TEXT DEFAULT 'pending',
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP

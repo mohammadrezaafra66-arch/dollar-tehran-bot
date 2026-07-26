@@ -399,6 +399,8 @@ def divar_run(body: dict, x_panel_password: str | None = Header(default=None)):
         cmd.append('--send-messages')
     if no_ai:
         cmd.append('--no-ai')
+    if profile_id:
+        cmd.extend(['--profile', profile_id])
     try:
         global DIVAR_RUN_PROCESS
         DIVAR_RUN_PROCESS = subprocess.Popen(cmd, cwd=str(DIVAR_RUN_PY.parent), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)

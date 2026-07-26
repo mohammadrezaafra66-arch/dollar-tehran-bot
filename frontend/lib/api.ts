@@ -105,6 +105,7 @@ export interface DivarLead {
   district: string; price_text: string; extraction_status: string; message_sent: number;
   message_status: string; sync_status: string; source_url: string; ai_analysis: string;
   created_at: string;
+  profile_id: string;
 }
 export interface DivarLeadsResponse { items: DivarLead[]; total: number; }
 export interface DivarRunRequest { url: string; send_messages?: boolean; no_ai?: boolean; profile_id?: string; }

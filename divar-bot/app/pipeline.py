@@ -70,8 +70,8 @@ def save_leads(leads: list) -> int:
             conn.execute("""
                 INSERT INTO divar_leads
                 (source_url, title, price_text, description,
-                 seller_name, phone, city, district, published_at, extraction_status)
-                VALUES (?,?,?,?,?,?,?,?,?,?)
+                 seller_name, phone, city, district, published_at, extraction_status, profile_id)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(source_url) DO UPDATE SET
                     title = excluded.title,
                     price_text = CASE WHEN excluded.price_text != '' THEN excluded.price_text ELSE divar_leads.price_text END,
@@ -82,6 +82,7 @@ def save_leads(leads: list) -> int:
                     district = CASE WHEN excluded.district != '' THEN excluded.district ELSE divar_leads.district END,
                     published_at = excluded.published_at,
                     extraction_status = excluded.extraction_status,
+                    profile_id = excluded.profile_id,
                     updated_at = CURRENT_TIMESTAMP
             """, (
                 lead.get("source_url", ""),
@@ -94,6 +95,7 @@ def save_leads(leads: list) -> int:
                 lead.get("district", ""),
                 lead.get("published_at_text", ""),
                 lead.get("extraction_status", "ok"),
+                lead.get("profile_id", "divar-profile-1"),
             ))
             saved += 1
         except Exception as exc:
@@ -151,14 +153,14 @@ class DivarPipeline:
         self.analyzer = DeepSeekAnalyzer()
         init_db()
 
-    def run(self, listing_url: str, send_messages: bool = False, run_ai: bool = True) -> dict:
+    def run(self, listing_url: str, send_messages: bool = False, run_ai: bool = True, profile_id: str = 'divar-profile-1') -> dict:
         import time
         stats = {
             "discovered": 0, "extracted": 0, "saved": 0,
             "ai_analyzed": 0, "messages_sent": 0, "messages_failed": 0,
             "started_at": datetime.now().isoformat(),
         }
-        profile_dir = os.getenv("DIVAR_PROFILE_DIR", "runtime/profiles/divar/divar-profile-1")
+        profile_dir = os.getenv("DIVAR_PROFILE_DIR", f"runtime/profiles/divar/{profile_id}")
         profile_path = Path(profile_dir) / "default"
         profile_path.mkdir(parents=True, exist_ok=True)
         with sync_playwright() as p:
@@ -212,6 +214,8 @@ class DivarPipeline:
         logger.info("مرحله ۳: حذف تکراری‌ها و ذخیره")
         dedup_result = self.deduplicator.deduplicate(raw_leads)
         unique = dedup_result.unique_leads
+        for lead in unique:
+            lead["profile_id"] = profile_id
         stats["saved"] = save_leads(unique)
         logger.info(f"   {stats['saved']} رکورد ذخیره شد")
         if run_ai:
