@@ -93,7 +93,7 @@ export const api = {
 
 // ─── Shared types ────────────────────────────────────────────
 export interface RunResponse { started: boolean; pid: number; cmd: string; }
-export interface RunStatus { running: boolean; pid: number | null; }
+export interface RunStatus { running: boolean; pid: number | null; output: string[]; }
 export interface ExportItem { name: string; path: string; size: number; modified: string; }
 
 // ─── Divar types ─────────────────────────────────────────────
