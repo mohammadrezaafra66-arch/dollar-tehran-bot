@@ -48,6 +48,10 @@ export const api = {
       post<{ sent: boolean }>(`/divar/accounts/${profileId}/login/otp`, { otp }),
     loginStatus: (profileId: string) =>
       get<LoginStatus>(`/divar/accounts/${profileId}/login/status`),
+    checkLogin: (profileId: string) =>
+      get<{ likely_logged_in: boolean; phone: string; cookies_size: number }>(`/divar/accounts/${profileId}/check-login`),
+    savePhone: (profileId: string, phone: string) =>
+      post<{ saved: boolean }>(`/divar/accounts/${profileId}/save-phone`, { phone }),
     deleteAccount: (profileId: string) =>
       del<{ deleted: boolean }>(`/divar/accounts/${profileId}`),
     config: () => get<DivarConfig>("/divar/config"),

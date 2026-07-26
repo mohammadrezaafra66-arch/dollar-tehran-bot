@@ -10,7 +10,7 @@ import time
 import selectors
 from pathlib import Path
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Body
 from fastapi.responses import FileResponse, HTMLResponse
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -811,3 +811,51 @@ def torob_exports():
     for path in sorted(export_dir.glob('*.xlsx'), key=lambda p: p.stat().st_mtime, reverse=True):
         items.append({'name': path.name, 'size': path.stat().st_size, 'date': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(path.stat().st_mtime))})
     return {'items': items}
+
+# ─── Divar Profile Phone Detection ───────────────────────────────────────────
+def _read_profile_phone(profile_path: Path) -> str:
+    """Read saved phone number from profile metadata."""
+    meta = profile_path / "metadata.json"
+    if meta.exists():
+        try:
+            import json
+            data = json.loads(meta.read_text(encoding="utf-8"))
+            return data.get("phone", "")
+        except Exception:
+            pass
+    return ""
+
+@app.post('/api/divar/accounts/{profile_id}/save-phone')
+def divar_save_phone(profile_id: str, body: dict = Body(...)):
+    """Save phone number to profile metadata."""
+    phone = body.get("phone", "")
+    profile_path = _divar_profile_dir(profile_id)
+    meta = profile_path / "metadata.json"
+    try:
+        import json
+        data = {}
+        if meta.exists():
+            data = json.loads(meta.read_text(encoding="utf-8"))
+        data["phone"] = phone
+        meta.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        return {"saved": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get('/api/divar/accounts/{profile_id}/check-login')
+def divar_check_login(profile_id: str):
+    """Check if profile is still logged in by checking session files."""
+    profile_path = _divar_profile_dir(profile_id)
+    cookies_path = profile_path / "Default" / "Cookies"
+    local_storage = profile_path / "Default" / "Local Storage" / "leveldb"
+    
+    has_cookies = cookies_path.exists() and cookies_path.stat().st_size > 10240
+    has_storage = local_storage.exists() and any(local_storage.iterdir())
+    phone = _read_profile_phone(profile_path)
+    
+    return {
+        "profile_id": profile_id,
+        "likely_logged_in": has_cookies and has_storage,
+        "phone": phone,
+        "cookies_size": cookies_path.stat().st_size if cookies_path.exists() else 0,
+    }
