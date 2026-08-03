@@ -5,6 +5,7 @@ import pandas as pd
 from dataclasses import dataclass, field
 from typing import Tuple, Optional
 
+
 @dataclass
 class Config:
     # ========== مسیرها ==========
@@ -44,10 +45,10 @@ class Config:
     DELAY_BETWEEN_SCROLLS: Tuple[float, float] = (3.0, 5.0)
     
     # ========== تنظیمات Chrome Profile ==========
-    USE_CHROME_PROFILE: bool = False
-    USER_DATA_DIR: str = r"C:\Users\Asus\AppData\Local\Google\Chrome\User Data"
-    PROFILE_NAME: str = "Default"
-    
+    USE_CHROME_PROFILE: bool = os.getenv("USE_CHROME_PROFILE", "false").lower() in {"1", "true", "yes", "on"}
+    USER_DATA_DIR: str = os.getenv("CHROME_USER_DATA_DIR", "")
+    PROFILE_NAME: str = os.getenv("CHROME_PROFILE_NAME", "Default")
+
     # عمومی
     MISTAKE_RATE: float = 0.02
     HUMAN_LIKE_TYPING: bool = True

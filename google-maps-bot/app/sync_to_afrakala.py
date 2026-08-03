@@ -1,5 +1,6 @@
 # app/sync_to_afrakala.py - نسخه اصلاح شده
 import json
+import os
 import time
 import requests
 from typing import Dict, List, Optional
@@ -9,9 +10,9 @@ from app.config import Config
 
 class SimpleSync:
     """Sync ساده برای افراکالا - فقط MVP"""
-    
-    BASE_URL = "http://192.168.170.10:3000"
-    TABLE_SLUG = "google-maps-extracted-businesses"
+
+    BASE_URL = os.getenv("AFRAKALA_API_URL", "http://127.0.0.1:3000").rstrip("/")
+    TABLE_SLUG = os.getenv("AFRAKALA_TABLE_SLUG", "google-maps-extracted-businesses")
     
     def __init__(self, api_key: str):
         self.api_key = api_key
@@ -190,12 +191,14 @@ def main():
     print("=" * 60)
     print("🤖 Simple Sync to AfraKala")
     print("=" * 60)
-    
-    api_key = input("Enter your AfraKala API Key: ").strip()
+
+    api_key = os.getenv("AFRAKALA_API_KEY", "").strip()
+    if not api_key:
+        api_key = input("Enter your AfraKala API Key: ").strip()
     if not api_key:
         print("❌ API Key required")
         return
-    
+
     syncer = SimpleSync(api_key)
     
     print("\nOptions:")
