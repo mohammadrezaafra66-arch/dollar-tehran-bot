@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, type DivarConfig } from "@/lib/api";
+import { TooltipHint } from "@/components/TooltipHint";
 
 export default function ConfigPanel() {
   const [config, setConfig] = useState<DivarConfig | null>(null);
@@ -48,26 +49,32 @@ export default function ConfigPanel() {
         <h2 className="font-bold text-lg mb-4">تنظیمات دیوار</h2>
         <div className="grid gap-4 md:grid-cols-2">
           {fields.map(({ key, label, type }) => (
-            <label key={key} className="block">
-              <span className="text-sm text-gray-600 mb-1 block">{label}</span>
-              <input type={type ?? "text"} value={config[key]}
-                onChange={e => setConfig({ ...config, [key]: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2 text-sm" />
-            </label>
+            <TooltipHint key={key} text={`تنظیم مربوط به ${label} را در این فیلد ویرایش کنید.`} position="top">
+              <label className="block">
+                <span className="text-sm text-gray-600 mb-1 block">{label}</span>
+                <input type={type ?? "text"} value={config[key]}
+                  onChange={e => setConfig({ ...config, [key]: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm" />
+              </label>
+            </TooltipHint>
           ))}
         </div>
       </div>
       <div className="bg-white rounded-xl border p-5">
-        <h2 className="font-bold text-lg mb-2">قالب پیام</h2>
+        <TooltipHint text="متن پیام ارسالی برای لیدها را در اینجا به‌صورت قالب‌محور ویرایش کنید." position="top">
+          <h2 className="font-bold text-lg mb-2">قالب پیام</h2>
+        </TooltipHint>
         <p className="text-xs text-gray-500 mb-3">متغیرها: {"{name}"}, {"{category}"}, {"{city}"}, {"{title}"}</p>
         <textarea value={template} onChange={e => setTemplate(e.target.value)} rows={6}
           className="w-full border rounded-lg px-3 py-2 text-sm font-mono" />
       </div>
       {message && <div className="p-3 bg-green-50 text-green-700 rounded-lg text-sm">{message}</div>}
-      <button onClick={() => void save()} disabled={loading}
-        className="bg-blue-600 text-white rounded-lg px-6 py-2 text-sm disabled:opacity-50">
-        {loading ? "در حال ذخیره..." : "ذخیره تنظیمات"}
-      </button>
+      <TooltipHint text="تنظیمات و قالب پیام را برای ذخیره نهایی در سرور اعمال می‌کند." position="top">
+        <button onClick={() => void save()} disabled={loading}
+          className="bg-blue-600 text-white rounded-lg px-6 py-2 text-sm disabled:opacity-50">
+          {loading ? "در حال ذخیره..." : "ذخیره تنظیمات"}
+        </button>
+      </TooltipHint>
     </div>
   );
 }

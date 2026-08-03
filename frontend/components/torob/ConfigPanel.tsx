@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, type TorobConfig } from "@/lib/api";
+import { TooltipHint } from "@/components/TooltipHint";
 
 export default function TorobConfigPanel() {
   const [config, setConfig] = useState<TorobConfig | null>(null);
@@ -58,10 +59,12 @@ export default function TorobConfigPanel() {
         </label>
       </div>
       {message && <div className="mb-3 p-3 bg-green-50 text-green-700 rounded-lg text-sm">{message}</div>}
-      <button onClick={() => void save()} disabled={loading}
-        className="bg-blue-600 text-white rounded-lg px-6 py-2 text-sm disabled:opacity-50">
-        {loading ? "در حال ذخیره..." : "ذخیره تنظیمات"}
-      </button>
+      <TooltipHint text="کلیدهای تنظیمات فعلی را روی سرور ذخیره می‌کند." position="top">
+        <button onClick={() => void save()} disabled={loading}
+          className="bg-blue-600 text-white rounded-lg px-6 py-2 text-sm disabled:opacity-50">
+          {loading ? "در حال ذخیره..." : "ذخیره تنظیمات"}
+        </button>
+      </TooltipHint>
     </div>
   );
 }

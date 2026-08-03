@@ -89,7 +89,14 @@ export const api = {
     exports: () => get<{ items: ExportItem[] }>("/torob/exports"),
     export: () => get<{ file: string }>("/torob/export"),
   },
-};
+  googleMaps: {
+    stats: () => get<GoogleMapsStats>("/google-maps/stats"),
+    logs: (lines?: number) => get<{ logs: string[] }>(`/google-maps/logs?lines=${lines ?? 100}`),
+    run: (body: GoogleMapsRunRequest) => post<RunResponse>("/google-maps/start", body),
+    runStatus: () => get<RunStatus>("/google-maps/status"),
+    runStop: () => post<{ stopped: boolean }>("/google-maps/stop", {}),
+    exports: () => get<{ files: string[] }>("/google-maps/exports"),
+  },};
 
 // ─── Shared types ────────────────────────────────────────────
 export interface RunResponse { started: boolean; pid: number; cmd: string; }
@@ -146,4 +153,11 @@ export interface TorobConfig {
   AFRA_API_URL: string; AFRA_API_KEY: string; TOROB_MIN_DELAY_SECONDS: string;
   TOROB_MAX_DELAY_SECONDS: string; TOROB_MAX_SELLERS_PER_URL: string;
   SELLER_CRAWL_TIMEOUT_SECONDS: string; CRAWL_SELLER_SITES: string;
+}
+
+export interface GoogleMapsStats {
+  total_records: number; synced: number; pending: number; failed: number;
+}
+export interface GoogleMapsRunRequest {
+  query: string;
 }

@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { api, RunResponse } from "@/lib/api";
+import { TooltipHint } from "@/components/TooltipHint";
 
 export default function TorobRunForm() {
   const [query, setQuery] = useState("");
@@ -24,15 +25,19 @@ export default function TorobRunForm() {
       <h2 className="font-bold text-lg mb-4">جستجو در ترب</h2>
       <div className="space-y-3">
         <div>
-          <label className="text-sm text-gray-600 block mb-1">کلمه جستجو</label>
+          <TooltipHint text="کلمهٔ جستجو برای ویرایش یا جمع‌آوری فروشنده‌ها را اینجا وارد کنید." position="top">
+            <label className="text-sm text-gray-600 block mb-1">کلمه جستجو</label>
+          </TooltipHint>
           <input value={query} onChange={e => setQuery(e.target.value)}
             className="w-full border rounded-lg px-3 py-2 text-sm"
             placeholder="مثال: اسپیکر بلوتوث" />
         </div>
-        <button onClick={handleRun} disabled={loading}
-          className="bg-blue-600 text-white rounded-lg px-5 py-2 text-sm disabled:opacity-50">
-          {loading ? "در حال جستجو..." : "شروع جستجو"}
-        </button>
+        <TooltipHint text="جستجوی ترب را با کوئری واردشده برای شروع عملیات اجرایی آغاز می‌کند." position="top">
+          <button onClick={handleRun} disabled={loading}
+            className="bg-blue-600 text-white rounded-lg px-5 py-2 text-sm disabled:opacity-50">
+            {loading ? "در حال جستجو..." : "شروع جستجو"}
+          </button>
+        </TooltipHint>
       </div>
       {result && (
         <div className="mt-3 p-3 bg-green-50 rounded-lg text-sm text-green-800">

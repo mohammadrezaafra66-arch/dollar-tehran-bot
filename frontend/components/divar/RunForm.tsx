@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { api, type RunResponse, type DivarAccount } from "@/lib/api";
+import { TooltipHint } from "@/components/TooltipHint";
 
 export default function RunForm() {
   const [url, setUrl] = useState("https://divar.ir/s/tehran");
@@ -79,14 +80,18 @@ export default function RunForm() {
         <h2 className="font-bold text-lg mb-4">اجرای ربات دیوار</h2>
         <div className="space-y-4">
           <div>
-            <label className="text-sm text-gray-600 block mb-1">URL دیوار</label>
+            <TooltipHint text="آدرس صفحهٔ دیوار را وارد کنید تا ربات از آن شروع به استخراج لید کند." position="top">
+              <label className="text-sm text-gray-600 block mb-1">URL دیوار</label>
+            </TooltipHint>
             <input value={url} onChange={e => setUrl(e.target.value)}
               disabled={isRunning}
               className="w-full border rounded-lg px-3 py-2 text-sm font-mono disabled:bg-gray-50"
               placeholder="https://divar.ir/s/tehran/mobile-phones" />
           </div>
           <div>
-            <label className="text-sm text-gray-600 block mb-1">پروفایل (اکانت)</label>
+            <TooltipHint text="اکانت یا پروفایل موردنظر برای اجرای دیوار را انتخاب کنید." position="top">
+              <label className="text-sm text-gray-600 block mb-1">پروفایل (اکانت)</label>
+            </TooltipHint>
             <select value={profileId} onChange={e => setProfileId(e.target.value)}
               disabled={isRunning}
               className="w-full border rounded-lg px-3 py-2 text-sm disabled:bg-gray-50">
@@ -98,27 +103,35 @@ export default function RunForm() {
             </select>
           </div>
           <div className="flex gap-4 text-sm">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={sendMessages} disabled={isRunning}
-                onChange={e => setSendMessages(e.target.checked)} />
-              ارسال پیام
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={noAi} disabled={isRunning}
-                onChange={e => setNoAi(e.target.checked)} />
-              بدون AI
-            </label>
+            <TooltipHint text="اگر فعال باشد، پیام‌های ثبت‌شده برای لیدها هم ارسال می‌شوند." position="top">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={sendMessages} disabled={isRunning}
+                  onChange={e => setSendMessages(e.target.checked)} />
+                ارسال پیام
+              </label>
+            </TooltipHint>
+            <TooltipHint text="در صورت فعال بودن، پردازش AI برای تحلیل لیدها غیرفعال می‌شود." position="top">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={noAi} disabled={isRunning}
+                  onChange={e => setNoAi(e.target.checked)} />
+                بدون AI
+              </label>
+            </TooltipHint>
           </div>
           <div className="flex gap-3">
-            <button onClick={handleRun} disabled={loading || isRunning}
-              className="bg-green-600 text-white rounded-lg px-5 py-2 text-sm disabled:opacity-50">
-              {loading ? "در حال شروع..." : "شروع اجرا"}
-            </button>
-            {isRunning && (
-              <button onClick={handleStop}
-                className="bg-red-600 text-white rounded-lg px-5 py-2 text-sm">
-                توقف
+            <TooltipHint text="اجرای جدید را با تنظیمات انتخاب‌شده آغاز می‌کند." position="top">
+              <button onClick={handleRun} disabled={loading || isRunning}
+                className="bg-green-600 text-white rounded-lg px-5 py-2 text-sm disabled:opacity-50">
+                {loading ? "در حال شروع..." : "شروع اجرا"}
               </button>
+            </TooltipHint>
+            {isRunning && (
+              <TooltipHint text="اجرای جاری را متوقف می‌کند و لاگ‌ها را قطع می‌کند." position="top">
+                <button onClick={handleStop}
+                  className="bg-red-600 text-white rounded-lg px-5 py-2 text-sm">
+                  توقف
+                </button>
+              </TooltipHint>
             )}
           </div>
         </div>

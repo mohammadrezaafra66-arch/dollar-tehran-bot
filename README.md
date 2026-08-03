@@ -1,74 +1,95 @@
-# Afra Automation Platform
+# 🤖 G3 Bot Panel — مدیریت ربات‌های دیوار، ترب و گوگل مپ
 
-Afra Automation Platform is a modular automation ecosystem responsible for:
+## 📌 معرفی
+این پنل یکپارچه برای مدیریت سه ربات استخراج لید طراحی شده است:
+- **دیوار** — استخراج لید از آگهی‌های دیوار
+- **ترب** — استخراج فروشندگان از ترب
+- **گوگل مپ** — استخراج کسب‌وکارها از گوگل مپ
 
-- Data extraction
-- Data cleaning
-- Data normalization
-- Data validation
-- Queue-based processing
-- Audit logging
-- Operational monitoring
-- API-based data delivery
+## 🚀 نصب و اجرا
 
-This platform is NOT:
+### روش ۱ — با Docker (پیشنهادی)
+```bash
+# ۱. کلون کردن پروژه
+git clone https://github.com/mohammadrezaafra66-arch/old-dollar-tehran-bot.git
+cd old-dollar-tehran-bot
 
-- Final CRM
-- Final business dashboard
-- Final decision-making engine
-- Final AfraKala web application
+# ۲. کپی کردن فایل env
+cp .env.example .env
+# ویرایش .env با تنظیمات خود
 
-Its role is to act as the operational and data bridge between automation bots and the Afra Smart Assistant web application.
+# ۳. اجرا با docker-compose
+docker-compose up -d
 
----
+# ۴. باز کردن مرورگر
+# فرانت: http://localhost:3010
+# بک‌اند: http://localhost:8100
+```
 
-# Core Architecture Principles
+### روش ۲ — بدون Docker (ویندوز)
+```bash
+# ۱. دابل‌کلیک روی start.bat
+# ۲. منتظر بمانید تا همه چیز نصب شود
+# ۳. مرورگر به‌صورت خودکار باز می‌شود
+```
 
-- Plugin Architecture
-- Queue-driven execution
-- API-first design
-- Config-driven behavior
-- Database as source of truth
-- Modular architecture
-- Operational observability
-- Auditability
-- Scalability
+### روش ۳ — اجرای دستی (توسعه)
+```bash
+# بک‌اند
+cd panel-backend
+python -m uvicorn app.main:app --reload --port 8100
 
----
+# فرانت (در ترمینال جداگانه)
+cd frontend
+npm install
+npm run dev
+```
 
-# Planned Plugins
+## 🔧 تنظیمات محیطی (.env)
 
-- Divar Lead Extractor
-- Google Maps Extractor
-- Torob Extractor
-- Rubika Extractor
-- Instagram Extractor
+| متغیر | توضیح | مثال |
+|-------|-------|------|
+| `AFRAKALA_API_URL` | آدرس API افراکالا برای سینک | `http://192.168.170.8:8000` |
+| `CHROME_USER_DATA_DIR` | مسیر پروفایل Chrome | `C:\Users\...\Chrome\User Data` |
+| `DB_PASSWORD` | رمز دیتابیس | `secure_password` |
 
----
+## 📁 ساختار پروژه
 
-# Key Features
+```
+old-dollar-tehran-bot/
+├── panel-backend/          # بک‌اند یکپارچه FastAPI
+│   └── app/
+│       ├── main.py         # نقطه ورود
+│       ├── routers/        # اندپوینت‌های API
+│       └── services/       # مدیریت ربات‌ها
+├── frontend/               # فرانت Next.js
+│   └── app/
+│       ├── divar/          # صفحه دیوار
+│       ├── torob/          # صفحه ترب
+│       ├── google-maps/    # صفحه گوگل مپ
+│       └── help/           # صفحه راهنما
+├── divar-bot/              # ربات دیوار
+├── torob-bot/              # ربات ترب
+├── google-maps-bot/        # ربات گوگل مپ
+├── docker-compose.yml      # اجرا با Docker
+├── start.bat               # اجرا در ویندوز
+└── .env.example            # نمونه تنظیمات
+```
 
-- Configurable speed profiles
-- Scheduled execution windows
-- Dynamic bot enable/disable
-- Retry policies
-- Checkpoint recovery
-- Entity-based storage
-- Audit trail logging
-- Data confidence scoring
-- Source reliability analysis
-- Operational learning layer
+## 🧪 تست
 
----
+پس از اجرا، صفحه `/help` را باز کنید و راهنمای کامل را مطالعه کنید.
 
-# Important Boundary
+## ❓ مشکلات رایج
 
-Afra Automation Platform only handles extraction and operational processing.
+### ۱. خطای `CHROME_USER_DATA_DIR not set`
+در فایل `.env` مسیر پروفایل Chrome را تنظیم کنید.
 
-Final business logic, CRM workflows, pricing logic and AI business decisions must exist inside the Afra Smart Assistant web application.
+### ۲. خطای اتصال به دیتابیس
+مطمئن شوید PostgreSQL در حال اجرا است و تنظیمات `.env` درست است.
 
----
+### ۳. فرانت باز نمی‌شود
+مطمئن شوید پورت ۳۰۱۰ در فایروال باز است و بک‌اند در حال اجرا است.
 
-# Long-Term Goal
-
-All bots, schedules, speed profiles, queues, logs and outputs must eventually be controlled through APIs by the Afra Smart Assistant web application.
+## 📞 پشتیبانی
+برای سوالات و مشکلات، با تیم پشتیبانی تماس بگیرید.
