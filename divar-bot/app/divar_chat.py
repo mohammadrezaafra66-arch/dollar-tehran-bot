@@ -44,24 +44,44 @@ class DivarChatMessenger:
         except Exception:
             return False
 
-    def login(self, phone: str, context: BrowserContext) -> bool:
+    def login(self, phone: str, context: BrowserContext, sample_url: str = "https://divar.ir/s/tehran") -> bool:
         page = context.new_page()
         try:
-            page.goto(f"{DIVAR_URL}/login", wait_until="domcontentloaded")
+            page.goto(sample_url, wait_until="domcontentloaded", timeout=20000)
+            time.sleep(3)
+
+            first_card = page.locator("a[href*='/v/']").first
+            if first_card.count() == 0:
+                logger.error("هیچ آگهی پیدا نشد")
+                return False
+            listing_url = first_card.get_attribute("href")
+            if not listing_url:
+                logger.error("لینک آگهی پیدا نشد")
+                return False
+            if not listing_url.startswith("http"):
+                listing_url = DIVAR_URL + listing_url
+
+            page.goto(listing_url, wait_until="domcontentloaded", timeout=20000)
             time.sleep(2)
-            phone_input = page.locator("input[type='tel'], input[placeholder*='موبایل'], input[name*='phone'], input[name*='mobile'], input").first
+
+            contact_btn = page.locator("button:has-text('اطلاعات تماس'), button:has-text('تماس با فروشنده')").first
+            if contact_btn.count() == 0:
+                logger.error("دکمه اطلاعات تماس پیدا نشد")
+                return False
+            contact_btn.click()
+            time.sleep(3)
+
+            phone_input = page.locator("input[type='tel'], input[placeholder*='موبایل'], input[placeholder*='شماره']").first
             if phone_input.count() == 0:
-                page.screenshot(path="logs/divar_login_error.png")
-                Path("logs/divar_login_error.html").write_text(page.content(), encoding="utf-8")
-                logger.error("فیلد شماره تلفن پیدا نشد")
+                logger.error("فیلد شماره تلفن در پاپ‌آپ پیدا نشد")
                 return False
             phone_input.fill(phone)
-            time.sleep(random.uniform(0.5, 1.5))
+            time.sleep(1)
             submit_btn = page.locator("button[type='submit']").first
             submit_btn.click()
             time.sleep(3)
             otp_file = Path(os.getcwd()) / "data" / f"divar_otp_{self.profile_id}.txt"
-            print(f"Waiting for OTP in file: {otp_file}")
+            logger.info(f"Waiting for OTP in: {otp_file}")
             max_wait = 120
             waited = 0
             otp = ""
@@ -76,12 +96,12 @@ class DivarChatMessenger:
             if not otp:
                 logger.error("OTP دریافت نشد — timeout")
                 return False
-            otp_input = page.locator("input[type='number'], input[maxlength='6']").first
+            otp_input = page.locator("input[type='number'], input[maxlength='6'], input[placeholder*='کد']").first
             if otp_input.count() == 0:
                 logger.error("فیلد OTP پیدا نشد")
                 return False
             otp_input.fill(otp)
-            time.sleep(random.uniform(1, 2))
+            time.sleep(1)
             confirm_btn = page.locator("button[type='submit']").first
             confirm_btn.click()
             time.sleep(4)

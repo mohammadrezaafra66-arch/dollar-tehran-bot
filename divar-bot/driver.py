@@ -44,7 +44,7 @@ if __name__ == "__main__":
                 user_data_dir=str(messenger.profile_path),
                 headless=False,
             )
-            success = messenger.login(args.phone, context)
+            success = messenger.login(args.phone, context, sample_url="https://divar.ir/s/tehran")
             context.close()
         result = {"login": "success" if success else "failed"}
     else:
