@@ -36,85 +36,27 @@ class DivarChatMessenger:
         self.profile_path.mkdir(parents=True, exist_ok=True)
 
     def is_logged_in(self, page: Page) -> bool:
-        try:
-            page.goto(DIVAR_URL, wait_until="domcontentloaded", timeout=15000)
-            time.sleep(2)
-            login_btn = page.locator("a[href*='login'], button:has-text('ورود')").first
-            return login_btn.count() == 0
-        except Exception:
-            return False
+        cookies_file = self.profile_path / "Cookies"
+        return cookies_file.exists() and cookies_file.stat().st_size > 1000
 
-    def login(self, phone: str, context: BrowserContext, sample_url: str = "https://divar.ir/s/tehran") -> bool:
+    def login(self, phone: str, context: BrowserContext, sample_url: str = "https://divar.ir") -> bool:
+        """Open browser for this profile and let user login manually.
+        Each profile has its own isolated user_data_dir so sessions never mix.
+        """
         page = context.new_page()
         try:
-            page.goto(sample_url, wait_until="domcontentloaded", timeout=20000)
-            time.sleep(3)
-
-            first_card = page.locator("a[href*='/v/']").first
-            if first_card.count() == 0:
-                logger.error("هیچ آگهی پیدا نشد")
-                return False
-            listing_url = first_card.get_attribute("href")
-            if not listing_url:
-                logger.error("لینک آگهی پیدا نشد")
-                return False
-            if not listing_url.startswith("http"):
-                listing_url = DIVAR_URL + listing_url
-
-            page.goto(listing_url, wait_until="domcontentloaded", timeout=20000)
-            time.sleep(2)
-
-            contact_btn = page.locator("button:has-text('اطلاعات تماس'), button:has-text('تماس با فروشنده')").first
-            if contact_btn.count() == 0:
-                logger.error("دکمه اطلاعات تماس پیدا نشد")
-                return False
-            contact_btn.click()
-            time.sleep(3)
-
-            phone_input = page.locator("input[type='tel'], input[placeholder*='موبایل'], input[placeholder*='شماره']").first
-            if phone_input.count() == 0:
-                logger.error("فیلد شماره تلفن در پاپ‌آپ پیدا نشد")
-                return False
-            phone_input.fill(phone)
-            time.sleep(1)
-            submit_btn = page.locator("button[type='submit']").first
-            submit_btn.click()
-            time.sleep(3)
-            otp_file = Path(os.getcwd()) / "data" / f"divar_otp_{self.profile_id}.txt"
-            logger.info(f"Waiting for OTP in: {otp_file}")
-            max_wait = 120
-            waited = 0
-            otp = ""
-            while waited < max_wait:
-                if otp_file.exists():
-                    otp = otp_file.read_text(encoding="utf-8").strip()
-                    if otp:
-                        otp_file.unlink(missing_ok=True)
-                        break
-                time.sleep(2)
-                waited += 2
-            if not otp:
-                logger.error("OTP دریافت نشد — timeout")
-                return False
-            otp_input = page.locator("input[type='number'], input[maxlength='6'], input[placeholder*='کد']").first
-            if otp_input.count() == 0:
-                logger.error("فیلد OTP پیدا نشد")
-                return False
-            otp_input.fill(otp)
-            time.sleep(1)
-            confirm_btn = page.locator("button[type='submit']").first
-            confirm_btn.click()
-            time.sleep(4)
-            if self.is_logged_in(page):
-                logger.info("Login موفق - session ذخیره شد")
-                page.close()
-                return True
-            logger.error("Login ناموفق")
-            page.close()
-            return False
+            page.goto("https://divar.ir", wait_until="domcontentloaded", timeout=20000)
+            logger.info(f"مرورگر پروفایل {self.profile_id} باز شد - لطفا دستی لاگین کنید و بعد مرورگر را ببندید")
+            page.wait_for_event("close", timeout=300000)
+            return True
         except Exception as exc:
-            logger.error(f"Login error: {exc}")
-            return False
+            logger.info(f"مرورگر بسته شد: {exc}")
+            return True
+        finally:
+            try:
+                page.close()
+            except Exception:
+                pass
 
     def send_message(self, listing_url: str, message: str, page: Page) -> DivarChatResult:
         try:
@@ -220,4 +162,3 @@ class DivarChatMessenger:
             page.close()
             context.close()
         return stats
-

@@ -34,19 +34,22 @@ if __name__ == "__main__":
     elif args.mode == "sync":
         result = sync_to_server()
     elif args.mode == "login":
-        assert args.phone, "--phone لازم است"
         from app.divar_chat import DivarChatMessenger
         from playwright.sync_api import sync_playwright
         profile_id = os.getenv("DIVAR_LOGIN_PROFILE_ID", "divar-profile-1")
         messenger = DivarChatMessenger(profile_id=profile_id)
+        print(json.dumps({"status": "opening_browser", "profile": profile_id}, ensure_ascii=False))
+        sys.stdout.flush()
         with sync_playwright() as p:
             context = p.chromium.launch_persistent_context(
                 user_data_dir=str(messenger.profile_path),
                 headless=False,
+                locale="fa-IR",
+                timezone_id="Asia/Tehran",
             )
-            success = messenger.login(args.phone, context, sample_url="https://divar.ir/s/tehran")
+            messenger.login("", context)
             context.close()
-        result = {"login": "success" if success else "failed"}
+        result = {"login": "session_saved", "profile": profile_id}
     else:
         result = {}
 
