@@ -37,7 +37,8 @@ if __name__ == "__main__":
         assert args.phone, "--phone لازم است"
         from app.divar_chat import DivarChatMessenger
         from playwright.sync_api import sync_playwright
-        messenger = DivarChatMessenger()
+        profile_id = os.getenv("DIVAR_LOGIN_PROFILE_ID", "divar-profile-1")
+        messenger = DivarChatMessenger(profile_id=profile_id)
         with sync_playwright() as p:
             context = p.chromium.launch_persistent_context(
                 user_data_dir=str(messenger.profile_path),

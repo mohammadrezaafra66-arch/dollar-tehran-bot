@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import os
 import time
@@ -30,8 +30,9 @@ class DivarChatResult:
 
 class DivarChatMessenger:
 
-    def __init__(self) -> None:
-        self.profile_path = Path(PROFILE_DIR) / "default"
+    def __init__(self, profile_id: str = "divar-profile-1") -> None:
+        self.profile_id = profile_id
+        self.profile_path = Path(PROFILE_DIR) / profile_id
         self.profile_path.mkdir(parents=True, exist_ok=True)
 
     def is_logged_in(self, page: Page) -> bool:
@@ -59,8 +60,22 @@ class DivarChatMessenger:
             submit_btn = page.locator("button[type='submit']").first
             submit_btn.click()
             time.sleep(3)
-            print("\nکد OTP را که از دیوار گرفتی وارد کن و Enter بزن...")
-            otp = input("کد OTP: ").strip()
+            otp_file = Path(os.getcwd()) / "data" / f"divar_otp_{self.profile_id}.txt"
+            print(f"Waiting for OTP in file: {otp_file}")
+            max_wait = 120
+            waited = 0
+            otp = ""
+            while waited < max_wait:
+                if otp_file.exists():
+                    otp = otp_file.read_text(encoding="utf-8").strip()
+                    if otp:
+                        otp_file.unlink(missing_ok=True)
+                        break
+                time.sleep(2)
+                waited += 2
+            if not otp:
+                logger.error("OTP دریافت نشد — timeout")
+                return False
             otp_input = page.locator("input[type='number'], input[maxlength='6']").first
             if otp_input.count() == 0:
                 logger.error("فیلد OTP پیدا نشد")

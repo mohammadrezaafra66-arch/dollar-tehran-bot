@@ -98,7 +98,12 @@ def _read_state(bot_name: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def start_process(bot_name: str, cmd: Union[List[str], str], cwd: Optional[Union[str, Path]] = None) -> Dict[str, Any]:
+def start_process(
+    bot_name: str,
+    cmd: Union[List[str], str],
+    cwd: Optional[Union[str, Path]] = None,
+    env: Optional[Dict[str, str]] = None,
+) -> Dict[str, Any]:
     if isinstance(cmd, list) and cmd and cmd[0] == "python":
         cmd = [_python_executable()] + cmd[1:]
 
@@ -119,6 +124,7 @@ def start_process(bot_name: str, cmd: Union[List[str], str], cwd: Optional[Union
     process = subprocess.Popen(
         command,
         cwd=str(resolved_cwd),
+        env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,

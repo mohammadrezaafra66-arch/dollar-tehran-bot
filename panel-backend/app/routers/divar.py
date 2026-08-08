@@ -96,9 +96,12 @@ async def list_divar_accounts() -> Dict[str, Any]:
 
 @router.post("/accounts/{profile_id}/login/start")
 async def start_divar_login(profile_id: Annotated[str, FastAPIPath()], payload: dict) -> Dict[str, Any]:
+    import os as _os
+
     phone = str(payload.get("phone", "")).strip()
+    env = {**_os.environ, "DIVAR_LOGIN_PROFILE_ID": profile_id}
     cmd = ["python", "divar-bot/driver.py", "--mode", "login", "--phone", phone]
-    result = start_process(f"divar-login-{profile_id}", cmd)
+    result = start_process(f"divar-login-{profile_id}", cmd, env=env)
     return {"started": result.get("started", False), "process_key": f"divar-login-{profile_id}"}
 
 
