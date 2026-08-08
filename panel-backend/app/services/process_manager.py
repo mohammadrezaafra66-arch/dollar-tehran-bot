@@ -7,6 +7,17 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 
+def _python_executable() -> str:
+    import shutil
+
+    for candidate in [sys.executable, "python3", "python"]:
+        if candidate == sys.executable:
+            return candidate
+        if shutil.which(candidate):
+            return candidate
+    return "python3"
+
+
 def _repo_root() -> Path:
     cwd = Path.cwd()
     if (cwd / "panel-backend").exists():
@@ -88,6 +99,9 @@ def _read_state(bot_name: str) -> Optional[Dict[str, Any]]:
 
 
 def start_process(bot_name: str, cmd: Union[List[str], str], cwd: Optional[Union[str, Path]] = None) -> Dict[str, Any]:
+    if isinstance(cmd, list) and cmd and cmd[0] == "python":
+        cmd = [_python_executable()] + cmd[1:]
+
     state = _read_state(bot_name)
     if state and state.get("running") and state.get("pid"):
         pid = int(state["pid"])
