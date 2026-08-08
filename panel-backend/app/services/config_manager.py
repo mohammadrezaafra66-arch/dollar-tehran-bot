@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Dict, Optional
 
 
 def _repo_root() -> Path:
@@ -19,12 +20,12 @@ def _normalize_value(value: str) -> str:
     return text
 
 
-def read_config(bot_name: str) -> dict[str, str]:
+def read_config(bot_name: str) -> Dict[str, str]:
     path = _env_path(bot_name)
     if not path.exists():
         return {}
 
-    config: dict[str, str] = {}
+    config: Dict[str, str] = {}
     try:
         for raw_line in path.read_text(encoding="utf-8").splitlines():
             line = raw_line.strip()
@@ -38,7 +39,7 @@ def read_config(bot_name: str) -> dict[str, str]:
     return config
 
 
-def write_config(bot_name: str, updates: dict[str, str]) -> bool:
+def write_config(bot_name: str, updates: Dict[str, str]) -> bool:
     path = _env_path(bot_name)
     try:
         if path.exists():
@@ -77,7 +78,7 @@ def write_config(bot_name: str, updates: dict[str, str]) -> bool:
         return False
 
 
-def read_divar_config() -> dict[str, str]:
+def read_divar_config() -> Dict[str, str]:
     config = read_config("divar")
     return {
         "DIVAR_MAX_ADS_PER_RUN": config.get("DIVAR_MAX_ADS_PER_RUN", ""),
@@ -92,7 +93,7 @@ def read_divar_config() -> dict[str, str]:
     }
 
 
-def read_torob_config() -> dict[str, str]:
+def read_torob_config() -> Dict[str, str]:
     config = read_config("torob")
     return {
         "AFRA_API_URL": config.get("AFRA_API_URL", ""),

@@ -1,7 +1,7 @@
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Any, Annotated, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Path as FastAPIPath, Query
 
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/divar", tags=["Divar"])
 
 
 @router.get("/stats")
-async def get_divar_stats() -> dict:
+async def get_divar_stats() -> Dict[str, Any]:
     return divar_stats()
 
 
@@ -21,20 +21,20 @@ async def get_divar_stats() -> dict:
 async def get_divar_leads(
     limit: Annotated[int, Query()] = 100,
     offset: Annotated[int, Query()] = 0,
-    status: Annotated[str | None, Query()] = None,
-    city: Annotated[str | None, Query()] = None,
-    message_sent: Annotated[str | None, Query()] = None,
-) -> dict:
+    status: Annotated[Optional[str], Query()] = None,
+    city: Annotated[Optional[str], Query()] = None,
+    message_sent: Annotated[Optional[str], Query()] = None,
+) -> Dict[str, Any]:
     return divar_leads(limit=limit, offset=offset, status=status, city=city, message_sent=message_sent)
 
 
 @router.get("/logs")
-async def get_divar_process_logs(lines: Annotated[int, Query()] = 100) -> dict:
+async def get_divar_process_logs(lines: Annotated[int, Query()] = 100) -> Dict[str, Any]:
     return {"lines": get_logs("divar", lines)}
 
 
 @router.post("/run")
-async def run_divar(payload: dict) -> dict:
+async def run_divar(payload: dict) -> Dict[str, Any]:
     url = str(payload.get("url", "")).strip()
     send_messages = bool(payload.get("send_messages", False))
     no_ai = bool(payload.get("no_ai", False))
@@ -49,22 +49,22 @@ async def run_divar(payload: dict) -> dict:
 
 
 @router.get("/run/status")
-async def get_divar_run_status() -> dict:
+async def get_divar_run_status() -> Dict[str, Any]:
     return get_status("divar")
 
 
 @router.post("/run/stop")
-async def stop_divar_run() -> dict:
+async def stop_divar_run() -> Dict[str, Any]:
     return stop_process("divar")
 
 
 @router.get("/send-log")
-async def get_divar_send_log(limit: Annotated[int, Query()] = 50) -> dict:
+async def get_divar_send_log(limit: Annotated[int, Query()] = 50) -> Dict[str, Any]:
     return {"items": divar_send_log(limit)}
 
 
 @router.get("/accounts")
-async def list_divar_accounts() -> dict:
+async def list_divar_accounts() -> Dict[str, Any]:
     profile_dir = read_divar_config().get("DIVAR_PROFILE_DIR", "")
     if not profile_dir:
         return {"items": []}
@@ -95,7 +95,7 @@ async def list_divar_accounts() -> dict:
 
 
 @router.post("/accounts/{profile_id}/login/start")
-async def start_divar_login(profile_id: Annotated[str, FastAPIPath()], payload: dict) -> dict:
+async def start_divar_login(profile_id: Annotated[str, FastAPIPath()], payload: dict) -> Dict[str, Any]:
     phone = str(payload.get("phone", "")).strip()
     cmd = ["python", "divar-bot/driver.py", "--mode", "login", "--phone", phone]
     result = start_process(f"divar-login-{profile_id}", cmd)
@@ -103,7 +103,7 @@ async def start_divar_login(profile_id: Annotated[str, FastAPIPath()], payload: 
 
 
 @router.post("/accounts/{profile_id}/login/otp")
-async def submit_divar_login_otp(profile_id: Annotated[str, FastAPIPath()], payload: dict) -> dict:
+async def submit_divar_login_otp(profile_id: Annotated[str, FastAPIPath()], payload: dict) -> Dict[str, Any]:
     otp = str(payload.get("otp", "")).strip()
     otp_path = _repo_root() / "data" / f"divar_otp_{profile_id}.txt"
     otp_path.parent.mkdir(parents=True, exist_ok=True)
@@ -112,13 +112,13 @@ async def submit_divar_login_otp(profile_id: Annotated[str, FastAPIPath()], payl
 
 
 @router.get("/accounts/{profile_id}/login/status")
-async def get_divar_login_status(profile_id: Annotated[str, FastAPIPath()]) -> dict:
+async def get_divar_login_status(profile_id: Annotated[str, FastAPIPath()]) -> Dict[str, Any]:
     status = get_status(f"divar-login-{profile_id}")
     return {"running": status.get("running", False), "output": status.get("output", []), "success": not status.get("running", False)}
 
 
 @router.get("/accounts/{profile_id}/check-login")
-async def check_divar_login(profile_id: Annotated[str, FastAPIPath()]) -> dict:
+async def check_divar_login(profile_id: Annotated[str, FastAPIPath()]) -> Dict[str, Any]:
     profile_dir = read_divar_config().get("DIVAR_PROFILE_DIR", "")
     cookies_path = _repo_root() / profile_dir / profile_id / "Cookies" if profile_dir else None
     if cookies_path is None:
@@ -130,7 +130,7 @@ async def check_divar_login(profile_id: Annotated[str, FastAPIPath()]) -> dict:
 
 
 @router.post("/accounts/{profile_id}/save-phone")
-async def save_divar_phone(profile_id: Annotated[str, FastAPIPath()], payload: dict) -> dict:
+async def save_divar_phone(profile_id: Annotated[str, FastAPIPath()], payload: dict) -> Dict[str, Any]:
     phone = str(payload.get("phone", "")).strip()
     phone_path = _repo_root() / "data" / f"divar_phone_{profile_id}.txt"
     phone_path.parent.mkdir(parents=True, exist_ok=True)
@@ -139,7 +139,7 @@ async def save_divar_phone(profile_id: Annotated[str, FastAPIPath()], payload: d
 
 
 @router.delete("/accounts/{profile_id}")
-async def delete_divar_account(profile_id: Annotated[str, FastAPIPath()]) -> dict:
+async def delete_divar_account(profile_id: Annotated[str, FastAPIPath()]) -> Dict[str, Any]:
     profile_dir = read_divar_config().get("DIVAR_PROFILE_DIR", "")
     if not profile_dir:
         raise HTTPException(status_code=404, detail="پروفایل یافت نشد.")
@@ -153,40 +153,40 @@ async def delete_divar_account(profile_id: Annotated[str, FastAPIPath()]) -> dic
 
 
 @router.get("/config")
-async def get_divar_config() -> dict:
+async def get_divar_config() -> Dict[str, Any]:
     return read_divar_config()
 
 
 @router.post("/config")
-async def save_divar_config(payload: dict) -> dict:
+async def save_divar_config(payload: dict) -> Dict[str, Any]:
     return {"saved": write_config("divar", payload)}
 
 
 @router.get("/template")
-async def get_divar_template() -> dict:
+async def get_divar_template() -> Dict[str, Any]:
     return {"template": read_template()}
 
 
 @router.post("/template")
-async def save_divar_template(payload: dict) -> dict:
+async def save_divar_template(payload: dict) -> Dict[str, Any]:
     template = str(payload.get("template", ""))
     return {"saved": write_template(template)}
 
 
 @router.get("/ai/stats")
-async def get_divar_ai_stats() -> dict:
+async def get_divar_ai_stats() -> Dict[str, Any]:
     return divar_ai_stats()
 
 
 @router.post("/ai/run")
-async def run_divar_ai() -> dict:
+async def run_divar_ai() -> Dict[str, Any]:
     cmd = ["python", "divar-bot/driver.py", "--mode", "sync"]
     result = start_process("divar-ai", cmd)
     return {"started": result.get("started", False)}
 
 
 @router.get("/exports")
-async def list_divar_exports() -> dict:
+async def list_divar_exports() -> Dict[str, Any]:
     output_dir = _repo_root() / "divar-bot" / "output"
     if not output_dir.exists():
         return {"items": []}
@@ -206,7 +206,7 @@ async def list_divar_exports() -> dict:
 
 
 @router.get("/export")
-async def get_latest_divar_export() -> dict:
+async def get_latest_divar_export() -> Dict[str, Any]:
     output_dir = _repo_root() / "divar-bot" / "output"
     if not output_dir.exists():
         return {"file": ""}

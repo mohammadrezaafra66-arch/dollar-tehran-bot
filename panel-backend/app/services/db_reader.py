@@ -1,7 +1,7 @@
 import os
 import sqlite3
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 
 def _repo_root() -> Path:
@@ -21,7 +21,7 @@ def _resolve_path(env_key: str, default_rel: str) -> Path:
     return _repo_root() / default_rel
 
 
-def _connect_sqlite(db_path: Path) -> sqlite3.Connection | None:
+def _connect_sqlite(db_path: Path) -> Optional[sqlite3.Connection]:
     if not db_path.exists():
         return None
     conn = sqlite3.connect(str(db_path))
@@ -29,7 +29,7 @@ def _connect_sqlite(db_path: Path) -> sqlite3.Connection | None:
     return conn
 
 
-def _boolish_to_int(value: str | None) -> int | None:
+def _boolish_to_int(value: Optional[str]) -> Optional[int]:
     if value is None:
         return None
     if isinstance(value, bool):
@@ -42,13 +42,13 @@ def _boolish_to_int(value: str | None) -> int | None:
     return None
 
 
-def _row_to_dict(row: sqlite3.Row | None) -> dict[str, Any] | None:
+def _row_to_dict(row: Optional[sqlite3.Row]) -> Optional[Dict[str, Any]]:
     if row is None:
         return None
     return dict(row)
 
 
-def divar_stats() -> dict[str, Any]:
+def divar_stats() -> Dict[str, Any]:
     db_path = _resolve_path("DIVAR_DB_PATH", "divar-bot/data/divar_leads.db")
     conn = _connect_sqlite(db_path)
     if conn is None:
@@ -74,15 +74,15 @@ def divar_stats() -> dict[str, Any]:
     }
 
 
-def divar_leads(limit: int = 100, offset: int = 0, status: str | None = None, city: str | None = None, message_sent: str | None = None) -> dict[str, Any]:
+def divar_leads(limit: int = 100, offset: int = 0, status: Optional[str] = None, city: Optional[str] = None, message_sent: Optional[str] = None) -> Dict[str, Any]:
     db_path = _resolve_path("DIVAR_DB_PATH", "divar-bot/data/divar_leads.db")
     conn = _connect_sqlite(db_path)
     if conn is None:
         return {"items": [], "total": 0}
 
     try:
-        where_clauses: list[str] = []
-        params: list[Any] = []
+        where_clauses: List[str] = []
+        params: List[Any] = []
 
         if status:
             where_clauses.append("(extraction_status = ? OR sync_status = ?)")
@@ -107,7 +107,7 @@ def divar_leads(limit: int = 100, offset: int = 0, status: str | None = None, ci
     return {"items": [dict(row) for row in rows], "total": total}
 
 
-def divar_send_log(limit: int = 50) -> dict[str, Any]:
+def divar_send_log(limit: int = 50) -> Dict[str, Any]:
     db_path = _resolve_path("DIVAR_DB_PATH", "divar-bot/data/divar_leads.db")
     conn = _connect_sqlite(db_path)
     if conn is None:
@@ -124,7 +124,7 @@ def divar_send_log(limit: int = 50) -> dict[str, Any]:
     return {"items": [dict(row) for row in rows]}
 
 
-def divar_ai_stats() -> dict[str, Any]:
+def divar_ai_stats() -> Dict[str, Any]:
     db_path = _resolve_path("DIVAR_DB_PATH", "divar-bot/data/divar_leads.db")
     conn = _connect_sqlite(db_path)
     if conn is None:
@@ -141,7 +141,7 @@ def divar_ai_stats() -> dict[str, Any]:
     return {"total": total, "analyzed": analyzed, "pending": pending, "failed": failed}
 
 
-def torob_stats() -> dict[str, Any]:
+def torob_stats() -> Dict[str, Any]:
     db_path = _resolve_path("TOROB_DB_PATH", "torob-bot/data/torob.db")
     conn = _connect_sqlite(db_path)
     if conn is None:
@@ -158,7 +158,7 @@ def torob_stats() -> dict[str, Any]:
     return {"total_sellers": total_sellers, "synced": synced, "total_reports": total_reports, "total_history": total_history}
 
 
-def torob_sellers(limit: int = 100, offset: int = 0, crawl_status: str | None = None) -> dict[str, Any]:
+def torob_sellers(limit: int = 100, offset: int = 0, crawl_status: Optional[str] = None) -> Dict[str, Any]:
     db_path = _resolve_path("TOROB_DB_PATH", "torob-bot/data/torob.db")
     conn = _connect_sqlite(db_path)
     if conn is None:
@@ -166,7 +166,7 @@ def torob_sellers(limit: int = 100, offset: int = 0, crawl_status: str | None = 
 
     try:
         where_sql = ""
-        params: list[Any] = []
+        params: List[Any] = []
         if crawl_status:
             where_sql = " WHERE crawl_status = ?"
             params.append(crawl_status)
@@ -182,7 +182,7 @@ def torob_sellers(limit: int = 100, offset: int = 0, crawl_status: str | None = 
     return {"items": [dict(row) for row in rows], "total": total}
 
 
-def torob_seller_detail(seller_id: int) -> dict[str, Any] | None:
+def torob_seller_detail(seller_id: int) -> Optional[Dict[str, Any]]:
     db_path = _resolve_path("TOROB_DB_PATH", "torob-bot/data/torob.db")
     conn = _connect_sqlite(db_path)
     if conn is None:
@@ -196,7 +196,7 @@ def torob_seller_detail(seller_id: int) -> dict[str, Any] | None:
     return dict(row) if row is not None else None
 
 
-def torob_reports(limit: int = 100, offset: int = 0) -> dict[str, Any]:
+def torob_reports(limit: int = 100, offset: int = 0) -> Dict[str, Any]:
     db_path = _resolve_path("TOROB_DB_PATH", "torob-bot/data/torob.db")
     conn = _connect_sqlite(db_path)
     if conn is None:
@@ -214,7 +214,7 @@ def torob_reports(limit: int = 100, offset: int = 0) -> dict[str, Any]:
     return {"items": [dict(row) for row in rows], "total": total}
 
 
-def google_maps_stats() -> dict[str, Any]:
+def google_maps_stats() -> Dict[str, Any]:
     db_path = _resolve_path("GOOGLE_MAPS_DB_PATH", "google-maps-bot/data/google_maps.db")
     conn = _connect_sqlite(db_path)
     if conn is None:

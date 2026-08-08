@@ -4,7 +4,7 @@ import signal
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List, Optional, Union
 
 
 def _repo_root() -> Path:
@@ -32,7 +32,7 @@ def _log_path(bot_name: str) -> Path:
     return _bot_dir(bot_name) / "logs" / f"{bot_name}.log"
 
 
-def _resolve_cwd(cwd: str | Path | None) -> Path:
+def _resolve_cwd(cwd: Optional[Union[str, Path]]) -> Path:
     if cwd is None:
         return _repo_root()
     path = Path(cwd)
@@ -53,7 +53,7 @@ def _is_pid_alive(pid: int) -> bool:
     return True
 
 
-def _read_log_lines(log_path: Path, lines: int) -> list[str]:
+def _read_log_lines(log_path: Path, lines: int) -> List[str]:
     if not log_path.exists():
         return []
     with log_path.open("r", encoding="utf-8", errors="replace") as handle:
@@ -63,7 +63,7 @@ def _read_log_lines(log_path: Path, lines: int) -> list[str]:
     return content[-lines:]
 
 
-def _write_state(bot_name: str, payload: dict[str, Any]) -> None:
+def _write_state(bot_name: str, payload: Dict[str, Any]) -> None:
     path = _state_path(bot_name)
     with path.open("w", encoding="utf-8") as handle:
         json.dump(payload, handle, ensure_ascii=False, indent=2)
@@ -75,7 +75,7 @@ def _remove_state(bot_name: str) -> None:
         path.unlink(missing_ok=True)
 
 
-def _read_state(bot_name: str) -> dict[str, Any] | None:
+def _read_state(bot_name: str) -> Optional[Dict[str, Any]]:
     path = _state_path(bot_name)
     if not path.exists():
         return None
@@ -87,7 +87,7 @@ def _read_state(bot_name: str) -> dict[str, Any] | None:
         return None
 
 
-def start_process(bot_name: str, cmd: list[str] | str, cwd: str | Path | None = None) -> dict[str, Any]:
+def start_process(bot_name: str, cmd: Union[List[str], str], cwd: Optional[Union[str, Path]] = None) -> Dict[str, Any]:
     state = _read_state(bot_name)
     if state and state.get("running") and state.get("pid"):
         pid = int(state["pid"])
@@ -121,7 +121,7 @@ def start_process(bot_name: str, cmd: list[str] | str, cwd: str | Path | None = 
     return {"started": True, "pid": process.pid, "cmd": payload["cmd"]}
 
 
-def stop_process(bot_name: str) -> dict[str, Any]:
+def stop_process(bot_name: str) -> Dict[str, Any]:
     state = _read_state(bot_name)
     pid = state.get("pid") if state else None
     if not pid:
@@ -149,7 +149,7 @@ def stop_process(bot_name: str) -> dict[str, Any]:
     return {"stopped": True}
 
 
-def get_status(bot_name: str) -> dict[str, Any]:
+def get_status(bot_name: str) -> Dict[str, Any]:
     state = _read_state(bot_name)
     pid = state.get("pid") if state else None
     if not pid:
@@ -165,6 +165,6 @@ def get_status(bot_name: str) -> dict[str, Any]:
     return {"running": True, "pid": pid_int, "output": output}
 
 
-def get_logs(bot_name: str, lines: int = 100) -> list[str]:
+def get_logs(bot_name: str, lines: int = 100) -> List[str]:
     log_path = _log_path(bot_name)
     return _read_log_lines(log_path, lines)
