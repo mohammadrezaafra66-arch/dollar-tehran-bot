@@ -13,10 +13,7 @@ export default function SessionPanel() {
   const [loginStatuses, setLoginStatuses] = useState<Record<string, LoginStatus>>({});
   const [loading, setLoading] = useState(false);
   const [loginModal, setLoginModal] = useState<string | null>(null);
-  const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
-  const [loginStep, setLoginStep] = useState<"phone"|"otp"|"done">("phone");
-  const [loginOutput, setLoginOutput] = useState<string[]>([]);
+  const [loginLoading, setLoginLoading] = useState(false);
   const [message, setMessage] = useState("");
 
   const load = useCallback(async () => {
@@ -40,33 +37,9 @@ export default function SessionPanel() {
   useEffect(() => { void load(); }, [load]);
 
   async function startLogin(profileId: string) {
-    if (!phone.trim()) return;
     try {
-      await api.divar.loginStart(profileId, phone);
-      await api.divar.savePhone(profileId, phone);
-      setLoginStep("otp");
-      pollStatus(profileId);
-    } catch (err) { setMessage(err instanceof Error ? err.message : "خطا"); }
-  }
-
-  function pollStatus(profileId: string) {
-    const interval = setInterval(async () => {
-      try {
-        const res = await api.divar.loginStatus(profileId);
-        setLoginOutput(res.output);
-        if (!res.running) {
-          clearInterval(interval);
-          setLoginStep("done");
-          setTimeout(() => { setLoginModal(null); void load(); }, 2000);
-        }
-      } catch { clearInterval(interval); }
-    }, 2000);
-  }
-
-  async function sendOtp(profileId: string) {
-    try {
-      await api.divar.loginOtp(profileId, otp);
-      setMessage("OTP ارسال شد — منتظر تأیید باشید...");
+      await api.divar.loginStart(profileId, "");
+      setLoginLoading(true);
     } catch (err) { setMessage(err instanceof Error ? err.message : "خطا"); }
   }
 
@@ -121,10 +94,7 @@ export default function SessionPanel() {
               <div className="flex gap-2">
                 <button onClick={() => {
                   setLoginModal(acc.profile_id);
-                  setLoginStep("phone");
-                  setLoginOutput([]);
-                  setOtp("");
-                  setPhone("");
+                  setLoginLoading(false);
                   setMessage("");
                 }} className="flex-1 bg-blue-600 text-white rounded-lg py-1.5 text-xs">
                   {isLoggedIn ? "تمدید session" : "ورود"}
@@ -144,39 +114,16 @@ export default function SessionPanel() {
           <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
             <h3 className="font-bold mb-1">ورود به دیوار</h3>
             <p className="text-xs text-gray-500 mb-4">{loginModal}</p>
-            {loginStep === "phone" && (
-              <div className="space-y-3">
-                <input value={phone} onChange={e => setPhone(e.target.value)}
-                  placeholder="09XXXXXXXXX"
-                  className="w-full border rounded-lg px-3 py-2 text-sm font-mono" />
-                <button onClick={() => void startLogin(loginModal)}
-                  className="w-full bg-blue-600 text-white rounded-lg py-2 text-sm">
-                  شروع لاگین
-                </button>
-              </div>
+            <p className="mb-4 text-sm text-gray-700">مرورگر دیوار باز می‌شود. لاگین کنید و مرورگر را ببندید.</p>
+            {!loginLoading ? (
+              <button onClick={() => void startLogin(loginModal)}
+                className="w-full bg-blue-600 text-white rounded-lg py-2 text-sm">
+                شروع لاگین
+              </button>
+            ) : (
+              <p className="mb-4 text-sm text-blue-600">در حال انتظار برای بسته شدن مرورگر...</p>
             )}
-            {loginStep === "otp" && (
-              <div className="space-y-3">
-                <pre className="bg-gray-950 text-green-400 text-xs p-3 rounded-lg max-h-32 overflow-auto">
-                  {loginOutput.length > 0 ? loginOutput.join("\n") : "در حال اتصال..."}
-                </pre>
-                <input value={otp} onChange={e => setOtp(e.target.value)}
-                  placeholder="کد OTP 6 رقمی"
-                  className="w-full border rounded-lg px-3 py-2 text-sm font-mono" />
-                <button onClick={() => void sendOtp(loginModal)}
-                  className="w-full bg-green-600 text-white rounded-lg py-2 text-sm">
-                  تأیید کد OTP
-                </button>
-                {message && <p className="text-xs text-blue-600 mt-1">{message}</p>}
-              </div>
-            )}
-            {loginStep === "done" && (
-              <div className="text-center py-4">
-                <div className="text-3xl mb-2">✅</div>
-                <div className="font-bold text-green-600">لاگین موفق!</div>
-              </div>
-            )}
-            <button onClick={() => setLoginModal(null)}
+            <button onClick={() => { setLoginModal(null); setLoginLoading(false); void load(); }}
               className="mt-4 w-full border rounded-lg py-2 text-sm text-gray-600">بستن</button>
           </div>
         </div>

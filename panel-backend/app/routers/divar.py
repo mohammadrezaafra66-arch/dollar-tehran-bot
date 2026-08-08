@@ -122,14 +122,21 @@ async def get_divar_login_status(profile_id: Annotated[str, FastAPIPath()]) -> D
 
 @router.get("/accounts/{profile_id}/check-login")
 async def check_divar_login(profile_id: Annotated[str, FastAPIPath()]) -> Dict[str, Any]:
-    profile_dir = read_divar_config().get("DIVAR_PROFILE_DIR", "")
-    cookies_path = _repo_root() / profile_dir / profile_id / "Cookies" if profile_dir else None
-    if cookies_path is None:
-        return {"likely_logged_in": False, "phone": "", "cookies_size": 0}
+    profile_dir = read_divar_config().get("DIVAR_PROFILE_DIR", "runtime/profiles/divar")
+    profile_path = _repo_root() / profile_dir / profile_id
+    cookies_path = profile_path / "Cookies"
 
     exists = cookies_path.exists() and cookies_path.is_file()
     size = cookies_path.stat().st_size if exists else 0
-    return {"likely_logged_in": exists and size > 0, "phone": "", "cookies_size": size}
+
+    phone_file = _repo_root() / "data" / f"divar_phone_{profile_id}.txt"
+    phone = phone_file.read_text(encoding="utf-8").strip() if phone_file.exists() else ""
+
+    return {
+        "likely_logged_in": exists and size > 1000,
+        "phone": phone,
+        "cookies_size": size,
+    }
 
 
 @router.post("/accounts/{profile_id}/save-phone")
